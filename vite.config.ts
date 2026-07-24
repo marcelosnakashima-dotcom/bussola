@@ -7,4 +7,7 @@ export default defineConfig({
   resolve: {
     alias: { '@': resolve(__dirname, './src') },
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+  }
 })
