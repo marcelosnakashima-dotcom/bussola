@@ -7,6 +7,7 @@ import { ImportPage } from '@/pages/ImportPage'
 import { AssetsPage } from '@/pages/AssetsPage'
 import { GoalsPage } from '@/pages/GoalsPage'
 import { AdminPage } from '@/pages/AdminPage'
+import { SimuladorPage } from '@/pages/SimuladorPage'
 
 const rootRoute = createRootRoute({ component: () => <Outlet /> })
 const authRoute = createRoute({ getParentRoute: () => rootRoute, path: '/auth', component: AuthPage })
@@ -28,12 +29,13 @@ const dashRoute = createRoute({ getParentRoute: () => appRoute, path: '/', compo
 const importRoute = createRoute({ getParentRoute: () => appRoute, path: '/importar', component: ImportPage })
 const assetsRoute = createRoute({ getParentRoute: () => appRoute, path: '/ativos', component: AssetsPage })
 const goalsRoute = createRoute({ getParentRoute: () => appRoute, path: '/metas', component: GoalsPage })
+const simuladorRoute = createRoute({ getParentRoute: () => appRoute, path: '/simulador', component: SimuladorPage })
 const adminRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin', component: AdminPage })
 
 const router = createRouter({
   routeTree: rootRoute.addChildren([
     authRoute,
-    appRoute.addChildren([dashRoute, importRoute, assetsRoute, goalsRoute, adminRoute]),
+    appRoute.addChildren([dashRoute, importRoute, assetsRoute, goalsRoute, simuladorRoute, adminRoute]),
   ]),
   history: createHashHistory(),
 })
