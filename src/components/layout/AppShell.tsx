@@ -2,16 +2,17 @@ import { type ReactNode } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import {
   LayoutDashboard, Upload, Wallet, SlidersHorizontal,
-  ShieldCheck, LogOut, Compass
+  ShieldCheck, LogOut, Compass, Calculator
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useUserRole } from '@/hooks/useData'
 
 const NAV = [
-  { to: '/',        label: 'Visão geral',        short: 'Visão',    Icon: LayoutDashboard },
-  { to: '/importar',label: 'Importar despesas',  short: 'Importar', Icon: Upload },
-  { to: '/ativos',  label: 'Ativos e patrimônio',short: 'Ativos',   Icon: Wallet },
-  { to: '/metas',   label: 'Metas 50/30/20',     short: 'Metas',    Icon: SlidersHorizontal },
+  { to: '/',          label: 'Visão geral',         short: 'Visão',    Icon: LayoutDashboard },
+  { to: '/importar',  label: 'Importar despesas',   short: 'Importar', Icon: Upload },
+  { to: '/ativos',    label: 'Ativos e patrimônio', short: 'Ativos',   Icon: Wallet },
+  { to: '/metas',     label: 'Metas 50/30/20',      short: 'Metas',    Icon: SlidersHorizontal },
+  { to: '/simulador', label: 'Simulador',           short: 'Simular',  Icon: Calculator },
 ]
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -24,7 +25,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     ...(isAdmin ? [{ to: '/admin', label: 'Administração', short: 'Admin', Icon: ShieldCheck }] : []),
   ]
 
-  const gridCols = navItems.length === 5 ? 'grid-cols-5' : 'grid-cols-4'
+  const gridCols =
+    navItems.length >= 6 ? 'grid-cols-6' :
+    navItems.length === 5 ? 'grid-cols-5' : 'grid-cols-4'
 
   return (
     <div className="min-h-screen flex bg-canvas">
