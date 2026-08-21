@@ -1,7 +1,9 @@
-// supabase/functions/send-due-notifications/index.ts  (versão 2)
+// supabase/functions/send-due-notifications/index.ts  (versão 3)
 // Agora suporta:
-// 1. Cron diário (contas a vencer) — igual à v1
-// 2. Disparo manual de admin_notifications pendentes
+// 1. Cron diário (contas a vencer) — igual à v2 (mode ausente ou 'daily')
+// 2. Disparo manual de admin_notifications pendentes (roda sempre)
+// 3. Cron semanal (resumo do que vence nos próximos 7 dias) — mode 'weekly'
+// 4. Cron mensal (fechamento do mês anterior) — mode 'monthly'
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
@@ -94,7 +96,7 @@ async function processAdminNotifications() {
   return totalSent;
 }
 
-// ─── 2. Cron: contas a vencer (lógica original) ───────────
+// ─── 2. Cron diário: contas a vencer (lógica original) ─────
 async function processBillReminders(): Promise<number> {
   const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
   const { data: settings } = await supabase
@@ -159,18 +161,109 @@ async function processBillReminders(): Promise<number> {
   return notified;
 }
 
+// ─── 3. Cron semanal: resumo das contas que vencem em 7 dias
+async function processWeeklyDigest(): Promise<number> {
+  const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
+  const { data: settings } = await supabase
+    .from("notification_settings")
+    .select("user_id, enabled")
+    .eq("enabled", true);
+
+  let notified = 0;
+  for (const s of settings ?? []) {
+    const { data: expenses } = await supabase
+      .from("recurring_expenses")
+      .select("id, description, amount, due_day")
+      .eq("user_id", s.user_id).eq("active", true);
+    if (!expenses?.length) continue;
+
+    const upcoming = expenses
+      .map(e => ({ ...e, nextDue: nextDueDate(e.due_day, todayMid) }))
+      .map(e => ({ ...e, daysUntil: daysBetween(todayMid, e.nextDue) }))
+      .filter(e => e.daysUntil >= 0 && e.daysUntil <= 7)
+      .sort((a, b) => a.daysUntil - b.daysUntil);
+    if (!upcoming.length) continue;
+
+    const total = upcoming.reduce((sum, e) => sum + Number(e.amount), 0);
+    const title = "Bússola — resumo da semana";
+    const body = upcoming.length === 1
+      ? `1 conta essa semana: ${upcoming[0].description} — ${formatBRL(upcoming[0].amount)}`
+      : `${upcoming.length} contas essa semana, totalizando ${formatBRL(total)}.`;
+
+    const { sent } = await sendPush(s.user_id, title, body);
+    if (sent > 0) notified++;
+  }
+  return notified;
+}
+
+// ─── 4. Cron mensal: fechamento do mês anterior ────────────
+async function processMonthlyReport(): Promise<number> {
+  const now = new Date();
+  const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const start = toDateOnly(firstOfLastMonth);
+  const end = toDateOnly(firstOfThisMonth);
+
+  const { data: settings } = await supabase
+    .from("notification_settings")
+    .select("user_id, enabled")
+    .eq("enabled", true);
+
+  let notified = 0;
+  for (const s of settings ?? []) {
+    const { data: txs } = await supabase
+      .from("transactions")
+      .select("valor")
+      .eq("user_id", s.user_id)
+      .eq("tipo", "despesa")
+      .gte("data", start)
+      .lt("data", end);
+
+    if (!txs?.length) continue;
+    const total = txs.reduce((sum, t) => sum + Number(t.valor), 0);
+
+    const monthLabel = firstOfLastMonth.toLocaleDateString("pt-BR", { month: "long" });
+    const title = "Bússola — fechamento do mês";
+    const body = `Em ${monthLabel}, você gastou ${formatBRL(total)} em ${txs.length} lançamento(s).`;
+
+    const { sent } = await sendPush(s.user_id, title, body);
+    if (sent > 0) notified++;
+  }
+  return notified;
+}
+
 // ─── Handler principal ─────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.headers.get("x-cron-secret") !== CRON_SECRET)
     return new Response("unauthorized", { status: 401 });
 
-  const [adminSent, billNotified] = await Promise.all([
-    processAdminNotifications(),
-    processBillReminders(),
-  ]);
+  let mode = "daily";
+  try {
+    const payload = await req.json();
+    if (payload?.mode) mode = payload.mode;
+  } catch {
+    // sem body ou body vazio: segue com o modo diário padrão
 
+
+  if (mode === "weekly") {
+    const weeklyNotified = await processWeeklyDigest();
+    return new Response(
+      JSON.stringify({ ok: true, mode, admin_sent: adminSent, weekly_notified: weeklyNotified }),
+      { headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  if (mode === "monthly") {
+    const monthlyNotified = await processMonthlyReport();
+    return new Response(
+      JSON.stringify({ ok: true, mode, admin_sent: adminSent, monthly_notified: monthlyNotified }),
+      { headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const billNotified = await processBillReminders();
   return new Response(
-    JSON.stringify({ ok: true, admin_sent: adminSent, bill_notified: billNotified }),
+    JSON.stringify({ ok: true, mode, admin_sent: adminSent, bill_notified: billNotified }),
     { headers: { "Content-Type": "application/json" } }
   );
 });
