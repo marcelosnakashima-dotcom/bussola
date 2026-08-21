@@ -31,7 +31,6 @@ export function AuthPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 relative" style={{ background: 'var(--canvas)' }}>
-      {/* Logo — canto superior direito */}
       <div className="absolute top-6 right-6 flex items-center gap-2">
         <Compass className="w-5 h-5" style={{ color: 'var(--brand)' }} />
         <span className="font-display text-lg" style={{ color: 'var(--ink)' }}>Bússola</span>
@@ -42,7 +41,6 @@ export function AuthPage() {
           Entrar
         </h2>
 
-        {/* Google */}
         <button onClick={handleGoogle}
           className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border text-sm font-medium transition-colors hover:bg-gray-50 mb-4"
           style={{ borderColor: 'var(--border)', color: 'var(--ink)' }}>
@@ -67,7 +65,8 @@ export function AuthPage() {
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="block text-sm mb-1.5 font-medium" style={{ color: 'var(--ink)' }}>
-                E-mail
+              E-mail
+            </label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
               className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-brand/20 transition-shadow"
               style={{ borderColor: 'var(--border)', background: '#fff' }} />
