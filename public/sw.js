@@ -5,12 +5,12 @@ self.addEventListener('push', event => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch {}
   const title = data.title || 'Bússola';
-  const opts = { body: data.body || 'Você tem uma conta a vencer.', icon: '/icon-192.png', badge: '/icon-192.png', tag: data.tag || 'bussola-push', data: { url: data.url || '/' }, requireInteraction: false };
+  const opts = { body: data.body || 'Você tem uma conta a vencer.', icon: 'icon-192.png', badge: 'icon-192.png', tag: data.tag || 'bussola-push', data: { url: data.url || '.' }, requireInteraction: false };
   event.waitUntil(self.registration.showNotification(title, opts));
 });
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const url = event.notification.data?.url || '/';
+  const url = event.notification.data?.url || '.';
   event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
     const ex = clients.find(c => c.url.includes(self.location.origin));
     if (ex) return ex.focus();
