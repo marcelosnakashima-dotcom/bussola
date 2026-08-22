@@ -8,6 +8,7 @@ import { AssetsPage } from '@/pages/AssetsPage'
 import { GoalsPage } from '@/pages/GoalsPage'
 import { AdminPage } from '@/pages/AdminPage'
 import { SimuladorPage } from '@/pages/SimuladorPage'
+import { ProfilePage } from '@/pages/ProfilePage'
 
 const rootRoute = createRootRoute({ component: () => <Outlet /> })
 const authRoute = createRoute({ getParentRoute: () => rootRoute, path: '/auth', component: AuthPage })
@@ -19,8 +20,7 @@ function AuthGuard() {
       <div className="w-8 h-8 rounded-full border-4 animate-spin"
         style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }} />
     </div>
-  )
-  if (!user) return <Navigate to="/auth" />
+    if (!user) return <Navigate to="/auth" />
   return <AppShell><Outlet /></AppShell>
 }
 
@@ -30,12 +30,13 @@ const importRoute = createRoute({ getParentRoute: () => appRoute, path: '/import
 const assetsRoute = createRoute({ getParentRoute: () => appRoute, path: '/ativos', component: AssetsPage })
 const goalsRoute = createRoute({ getParentRoute: () => appRoute, path: '/metas', component: GoalsPage })
 const simuladorRoute = createRoute({ getParentRoute: () => appRoute, path: '/simulador', component: SimuladorPage })
+const profileRoute = createRoute({ getParentRoute: () => appRoute, path: '/perfil', component: ProfilePage })
 const adminRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin', component: AdminPage })
 
 const router = createRouter({
   routeTree: rootRoute.addChildren([
     authRoute,
-    appRoute.addChildren([dashRoute, importRoute, assetsRoute, goalsRoute, simuladorRoute, adminRoute]),
+    appRoute.addChildren([dashRoute, importRoute, assetsRoute, goalsRoute, simuladorRoute, profileRoute, adminRoute]),
   ]),
   history: createHashHistory(),
 })
