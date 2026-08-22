@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Home, Car, Plane, Check } from 'lucide-react'
+import { Home, Car, Plane, Check, TrendingDown } from 'lucide-react'
 import { supabase, formatBRL } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { compararBem, PRESETS, type TipoBem, type Modalidade } from '@/lib/simulador'
@@ -152,6 +152,35 @@ export function SimuladorPage() {
 
       {comparativo && (
         <>
+          {/* Diferença — destaque grande */}
+          {(() => {
+            const custoFin  = comparativo.financiamento.totalPago + comparativo.financiamento.entrada
+            const custoCons = comparativo.consorcio.custoTotalEstimado
+            const diff = Math.abs(custoFin - custoCons)
+            const maiorCusto = Math.max(custoFin, custoCons)
+            const pct = maiorCusto > 0 ? (diff / maiorCusto) * 100 : 0
+            const consorcioGanha = custoCons < custoFin
+            const corDestaque = consorcioGanha ? 'var(--brand)' : '#2563EB'
+            const maisBarato = consorcioGanha ? 'O consórcio' : 'O financiamento'
+
+            return (
+              <div className="rounded-2xl p-6 md:p-8 text-center" style={{ background: corDestaque }}>
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <TrendingDown className="w-5 h-5" style={{ color: 'rgba(255,255,255,0.9)' }} />
+                  <span className="text-xs md:text-sm font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.9)' }}>
+                    {maisBarato} sai mais barato nessa simulação
+                  </span>
+                </div>
+                <p className="font-display text-4xl md:text-6xl text-white leading-none">
+                  {formatBRL(diff)}
+                </p>
+                <p className="text-sm md:text-base mt-3" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                  de economia no total — {pct.toFixed(0)}% a menos
+                </p>
+              </div>
+            )
+          })()}
+
           <div className="grid md:grid-cols-2 gap-4">
             {/* Financiamento */}
             <div className="rounded-2xl border bg-white p-5" style={{ borderColor: 'var(--border)', borderLeft: '4px solid #2563EB' }}>
@@ -226,17 +255,6 @@ export function SimuladorPage() {
                   : contratando === 'consorcio' ? 'Adicionando...' : 'Contratar este plano'}
               </button>
             </div>
-          </div>
-
-          {/* Diferença */}
-          <div className="rounded-xl px-4 py-3 text-sm text-center" style={{ background: 'var(--canvas)', color: 'var(--ink)' }}>
-            {(() => {
-              const custoFin  = comparativo.financiamento.totalPago + comparativo.financiamento.entrada
-              const custoCons = comparativo.consorcio.custoTotalEstimado
-              const diff = Math.abs(custoFin - custoCons)
-              const maisBarato = custoFin < custoCons ? 'o financiamento' : 'o consórcio'
-              return <>Nessa simulação, <strong>{maisBarato}</strong> sai {formatBRL(diff)} mais barato no total.</>
-            })()}
           </div>
 
           {erro && <p className="text-sm text-red-600 text-center">{erro}</p>}
