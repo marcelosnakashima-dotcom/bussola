@@ -2,7 +2,7 @@ import { type ReactNode } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import {
   LayoutDashboard, Upload, Wallet, SlidersHorizontal,
-  ShieldCheck, LogOut, Compass, Calculator
+  ShieldCheck, LogOut, Compass, Calculator, User
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useUserRole } from '@/hooks/useData'
@@ -13,6 +13,7 @@ const NAV = [
   { to: '/ativos',    label: 'Ativos e patrimônio', short: 'Ativos',   Icon: Wallet },
   { to: '/metas',     label: 'Metas 50/30/20',      short: 'Metas',    Icon: SlidersHorizontal },
   { to: '/simulador', label: 'Simulador',           short: 'Simular',  Icon: Calculator },
+  { to: '/perfil',    label: 'Perfil',              short: 'Perfil',   Icon: User },
 ]
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -26,7 +27,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   ]
 
   const gridCols =
-    navItems.length >= 6 ? 'grid-cols-6' :
+    navItems.length >= 7 ? 'grid-cols-7' :
+    navItems.length === 6 ? 'grid-cols-6' :
     navItems.length === 5 ? 'grid-cols-5' : 'grid-cols-4'
 
   return (
