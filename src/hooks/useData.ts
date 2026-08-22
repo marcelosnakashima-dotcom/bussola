@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { supabase, type Category, type Transaction, type Asset, type UserPlan, type NotificationSettings } from '@/lib/supabase'
+import { supabase, type Category, type Transaction, type Asset, type UserPlan, type NotificationSettings, type RecurringExpense } from '@/lib/supabase'
 import { startOfMonth, endOfMonth, format } from 'date-fns'
 
 // ─── Auth helper ──────────────────────────────────────────────────────────────
@@ -181,6 +181,35 @@ export function useAssets() {
 
   const total = assets.reduce((s, a) => s + Number(a.valor), 0)
   return { assets, loading, total, refresh: load, addAsset, updateAsset, deleteAsset }
+}
+
+// ─── Recurring expenses ───────────────────────────────────────────────────────
+export function useRecurringExpenses() {
+  const [expenses, setExpenses] = useState<RecurringExpense[]>([])
+  const [loading,  setLoading]  = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const userId = await uid()
+    if (!userId) { setLoading(false); return }
+    const { data } = await supabase
+      .from('recurring_expenses')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('active', true)
+      .order('due_day', { ascending: true })
+    setExpenses(data ?? [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const deactivate = async (id: string) => {
+    await supabase.from('recurring_expenses').update({ active: false }).eq('id', id)
+    setExpenses(prev => prev.filter(e => e.id !== id))
+  }
+
+  return { expenses, loading, refresh: load, deactivate }
 }
 
 // ─── Plan ─────────────────────────────────────────────────────────────────────
