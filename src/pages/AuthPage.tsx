@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Compass } from 'lucide-react'
+import { ArsenLogo } from '@/components/ArsenLogo'
 import { supabase } from '@/lib/supabase'
 
 export function AuthPage() {
@@ -32,8 +32,8 @@ export function AuthPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-6 relative" style={{ background: 'var(--canvas)' }}>
       <div className="absolute top-6 right-6 flex items-center gap-2">
-        <Compass className="w-5 h-5" style={{ color: 'var(--brand)' }} />
-        <span className="font-display text-lg" style={{ color: 'var(--ink)' }}>Bússola</span>
+        <ArsenLogo className="w-5 h-5" />
+        <span className="font-display text-lg" style={{ color: 'var(--ink)' }}>Arsen</span>
       </div>
 
       <div className="w-full max-w-sm">
