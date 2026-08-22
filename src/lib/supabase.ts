@@ -100,6 +100,17 @@ export interface AdminNotification {
   created_at: string
 }
 
+export interface RecurringExpense {
+  id: string
+  user_id: string
+  description: string
+  category: string | null
+  amount: number
+  due_day: number
+  active: boolean
+  created_at: string
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 export const formatBRL = (v: number) =>
