@@ -2,8 +2,9 @@ import { type ReactNode } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import {
   LayoutDashboard, Upload, Wallet, SlidersHorizontal,
-  ShieldCheck, LogOut, Compass, Calculator, User
+  ShieldCheck, LogOut, Calculator, User
 } from 'lucide-react'
+import { ArsenLogo } from '@/components/ArsenLogo'
 import { useAuth } from '@/lib/auth'
 import { useUserRole } from '@/hooks/useData'
 
@@ -39,12 +40,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         {/* Logo */}
         <div>
           <div className="flex items-center gap-3 px-6 py-6 border-b border-white/10">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center"
-              style={{ background: 'var(--brand)' }}>
-              <Compass className="w-5 h-5 text-white" />
-            </div>
+            <ArsenLogo className="w-9 h-9 flex-shrink-0" />
             <div>
-              <p className="font-display text-base text-white leading-none">Bússola</p>
+              <p className="font-display text-base text-white leading-none">Arsen</p>
               <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
                 orientação financeira
               </p>
@@ -98,8 +96,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="md:hidden fixed top-0 inset-x-0 z-20 flex items-center justify-between px-4 h-14 border-b border-white/10"
         style={{ background: 'var(--ink)' }}>
         <div className="flex items-center gap-2">
-          <Compass className="w-5 h-5" style={{ color: 'var(--brand-lt)' }} />
-          <span className="font-display text-base text-white">Bússola</span>
+          <ArsenLogo className="w-5 h-5" />
+          <span className="font-display text-base text-white">Arsen</span>
         </div>
         <button onClick={signOut} className="p-2 text-white/60 hover:text-white">
           <LogOut className="w-5 h-5" />
