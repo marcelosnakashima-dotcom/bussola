@@ -15,12 +15,15 @@ const authRoute = createRoute({ getParentRoute: () => rootRoute, path: '/auth', 
 
 function AuthGuard() {
   const { user, loading } = useAuth()
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--canvas)' }}>
-      <div className="w-8 h-8 rounded-full border-4 animate-spin"
-        style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }} />
-    </div>
-    if (!user) return <Navigate to="/auth" />
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--canvas)' }}>
+        <div className="w-8 h-8 rounded-full border-4 animate-spin"
+          style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }} />
+      </div>
+    )
+  }
+  if (!user) return <Navigate to="/auth" />
   return <AppShell><Outlet /></AppShell>
 }
 
