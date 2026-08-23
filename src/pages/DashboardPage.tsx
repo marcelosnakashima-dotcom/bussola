@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { TrendingUp, TrendingDown, Calendar, Target, ArrowRight } from 'lucide-react'
+import { TrendingUp, TrendingDown, Calendar, Target, ArrowRight, Repeat, X } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { useSummary, useCategoryTotals, useAssets, useTransactions } from '@/hooks/useData'
+import { useSummary, useCategoryTotals, useAssets, useTransactions, useRecurringExpenses } from '@/hooks/useData'
 import { formatBRL, formatDate } from '@/lib/supabase'
 import { NotificationSettings } from '@/components/notifications/NotificationSettings'
 import { DonutChart } from '@/components/charts/DonutChart'
@@ -18,6 +18,7 @@ export function DashboardPage() {
   const categoryTotals = useCategoryTotals(month)
   const { assets, total: patrimonioTotal, loading: assetsLoading } = useAssets()
   const { transactions, loading: txLoading } = useTransactions(month)
+  const { expenses: recurringExpenses, loading: recurringLoading, deactivate: deactivateRecurring } = useRecurringExpenses()
 
   const monthLabel = month.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
   const recentTx   = transactions.filter(t => t.status === 'confirmada').slice(0, 6)
@@ -216,6 +217,45 @@ export function DashboardPage() {
           }
         </div>
       </div>
+
+      {/* Despesas recorrentes */}
+      {!recurringLoading && recurringExpenses.length > 0 && (
+        <div className="rounded-2xl border bg-white" style={{ borderColor: 'var(--border)' }}>
+          <div className="p-5 border-b" style={{ borderColor: 'var(--border)' }}>
+            <div className="flex items-center gap-2">
+              <Repeat className="w-4 h-4" style={{ color: 'var(--brand)' }} />
+              <h3 className="font-display text-lg" style={{ color: 'var(--ink)' }}>Despesas recorrentes</h3>
+            </div>
+            <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+              Cobranças automáticas cadastradas — consórcios, financiamentos e assinaturas.
+            </p>
+          </div>
+          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+            {recurringExpenses.map(e => (
+              <div key={e.id} className="flex items-center justify-between px-5 py-3 gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate" style={{ color: 'var(--ink)' }}>
+                    {e.description}
+                  </p>
+                  <p className="text-[11px]" style={{ color: 'var(--muted)' }}>
+                    {e.category ?? 'Sem categoria'} · todo dia {e.due_day}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <p className="text-sm font-mono font-medium" style={{ color: 'var(--ink)' }}>
+                    {formatBRL(e.amount)}
+                  </p>
+                  <button onClick={() => deactivateRecurring(e.id)}
+                    title="Remover despesa recorrente"
+                    className="p-1 rounded hover:bg-gray-100 transition-colors">
+                    <X className="w-3.5 h-3.5" style={{ color: 'var(--muted)' }} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Assets preview */}
       {assets.length > 0 && (
