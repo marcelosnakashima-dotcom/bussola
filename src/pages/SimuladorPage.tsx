@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Home, Car, Plane, Check, TrendingDown } from 'lucide-react'
+import { Home, Car, Plane, Check, TrendingDown, X } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { supabase, formatBRL } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { compararBem, PRESETS, type TipoBem, type Modalidade } from '@/lib/simulador'
@@ -7,14 +8,23 @@ import { compararBem, PRESETS, type TipoBem, type Modalidade } from '@/lib/simul
 const ICONS: Record<TipoBem, typeof Home> = { imovel: Home, carro: Car, viagem: Plane }
 const TIPOS: TipoBem[] = ['imovel', 'carro', 'viagem']
 
+interface Sucesso {
+  modalidade: Modalidade
+  descricao: string
+  parcela: number
+  dia: number
+}
+
 export function SimuladorPage() {
   const { user } = useAuth()
   const [tipoBem, setTipoBem]           = useState<TipoBem>('imovel')
   const [valorCentavos, setValorCentavos] = useState('')
   const [nomeBem, setNomeBem]           = useState('')
   const [diaVencimento, setDiaVencimento] = useState('10')
+  const [confirmando, setConfirmando]   = useState<Modalidade | null>(null)
   const [contratando, setContratando]   = useState<Modalidade | null>(null)
   const [contratado, setContratado]     = useState<Modalidade | null>(null)
+  const [sucesso, setSucesso]           = useState<Sucesso | null>(null)
   const [erro, setErro]                 = useState<string | null>(null)
 
   const valor    = valorCentavos ? parseInt(valorCentavos, 10) / 100 : 0
@@ -24,6 +34,8 @@ export function SimuladorPage() {
   const handleTipoChange = (tipo: TipoBem) => {
     setTipoBem(tipo)
     setContratado(null)
+    setConfirmando(null)
+    setSucesso(null)
     setErro(null)
   }
 
@@ -31,6 +43,8 @@ export function SimuladorPage() {
     const digits = e.target.value.replace(/\D/g, '')
     setValorCentavos(digits)
     setContratado(null)
+    setConfirmando(null)
+    setSucesso(null)
   }
 
   const contratar = async (modalidade: Modalidade) => {
@@ -46,6 +60,7 @@ export function SimuladorPage() {
         : comparativo.consorcio.custoTotalEstimado
       const prazo = modalidade === 'financiamento' ? preset.financiamento.prazoMeses : preset.consorcio.prazoMeses
       const nome  = nomeBem.trim() || preset.label
+      const dia   = Math.min(28, Math.max(1, parseInt(diaVencimento, 10) || 10))
       const descricao = `${modalidade === 'financiamento' ? 'Financiamento' : 'Consórcio'} — ${nome}`
 
       const { data: expense, error: expError } = await supabase
@@ -55,7 +70,7 @@ export function SimuladorPage() {
           description: descricao,
           category: preset.label,
           amount: Math.round(parcela * 100) / 100,
-          due_day: Math.min(28, Math.max(1, parseInt(diaVencimento, 10) || 10)),
+          due_day: dia,
           active: true,
         })
         .select()
@@ -77,8 +92,11 @@ export function SimuladorPage() {
       if (simError) throw simError
 
       setContratado(modalidade)
+      setConfirmando(null)
+      setSucesso({ modalidade, descricao, parcela, dia })
     } catch {
       setErro('Não foi possível registrar agora. Tenta de novo em instantes.')
+      setConfirmando(null)
     }
     setContratando(null)
   }
@@ -93,6 +111,27 @@ export function SimuladorPage() {
           Compare o custo de comprar via banco ou via consórcio.
         </p>
       </div>
+
+      {/* Mensagem de finalização */}
+      {sucesso && (
+        <div className="rounded-2xl border-2 p-5 flex items-start gap-3" style={{ borderColor: 'var(--brand)', background: '#F0F7F3' }}>
+          <Check className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--brand)' }} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium" style={{ color: 'var(--ink)' }}>
+              Despesa recorrente criada: {sucesso.descricao}
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+              {formatBRL(sucesso.parcela)}/mês, todo dia {sucesso.dia}. Já dá pra acompanhar na Visão geral.
+            </p>
+            <Link to="/" className="text-xs mt-1.5 inline-flex items-center gap-1 hover:underline" style={{ color: 'var(--brand)' }}>
+              Ver na Visão geral →
+            </Link>
+          </div>
+          <button onClick={() => setSucesso(null)} className="flex-shrink-0 p-1">
+            <X className="w-4 h-4" style={{ color: 'var(--muted)' }} />
+          </button>
+        </div>
+      )}
 
       {/* Seletor de produto */}
       <div className="grid grid-cols-3 gap-2">
@@ -211,13 +250,34 @@ export function SimuladorPage() {
                   </span>
                 </div>
               </div>
-              <button onClick={() => contratar('financiamento')} disabled={contratando !== null || !user}
-                className="w-full mt-4 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60 flex items-center justify-center gap-1.5"
-                style={{ background: '#2563EB' }}>
-                {contratado === 'financiamento'
-                  ? <><Check className="w-4 h-4" /> Adicionado às despesas</>
-                  : contratando === 'financiamento' ? 'Adicionando...' : 'Contratar este plano'}
-              </button>
+
+              {confirmando === 'financiamento' ? (
+                <div className="mt-4 rounded-xl p-3 space-y-2" style={{ background: 'var(--canvas)' }}>
+                  <p className="text-xs text-center" style={{ color: 'var(--ink)' }}>
+                    Confirmar financiamento de <strong>{nomeBem.trim() || preset.label}</strong>: {formatBRL(comparativo.financiamento.parcelaInicial)}/mês, todo dia {diaVencimento}?
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setConfirmando(null)} disabled={contratando !== null}
+                      className="flex-1 py-2 rounded-lg text-sm border disabled:opacity-60"
+                      style={{ borderColor: 'var(--border)', color: 'var(--ink)' }}>
+                      Cancelar
+                    </button>
+                    <button onClick={() => contratar('financiamento')} disabled={contratando !== null}
+                      className="flex-1 py-2 rounded-lg text-sm text-white disabled:opacity-60"
+                      style={{ background: '#2563EB' }}>
+                      {contratando === 'financiamento' ? 'Confirmando...' : 'Confirmar'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setConfirmando('financiamento')} disabled={contratando !== null || !user}
+                  className="w-full mt-4 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60 flex items-center justify-center gap-1.5"
+                  style={{ background: '#2563EB' }}>
+                  {contratado === 'financiamento'
+                    ? <><Check className="w-4 h-4" /> Adicionado às despesas</>
+                    : 'Contratar este plano'}
+                </button>
+              )}
             </div>
 
             {/* Consórcio */}
@@ -247,13 +307,34 @@ export function SimuladorPage() {
                   </span>
                 </div>
               </div>
-              <button onClick={() => contratar('consorcio')} disabled={contratando !== null || !user}
-                className="w-full mt-4 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60 flex items-center justify-center gap-1.5"
-                style={{ background: 'var(--brand)' }}>
-                {contratado === 'consorcio'
-                  ? <><Check className="w-4 h-4" /> Adicionado às despesas</>
-                  : contratando === 'consorcio' ? 'Adicionando...' : 'Contratar este plano'}
-              </button>
+
+              {confirmando === 'consorcio' ? (
+                <div className="mt-4 rounded-xl p-3 space-y-2" style={{ background: 'var(--canvas)' }}>
+                  <p className="text-xs text-center" style={{ color: 'var(--ink)' }}>
+                    Confirmar consórcio de <strong>{nomeBem.trim() || preset.label}</strong>: {formatBRL(comparativo.consorcio.parcelaInicial)}/mês, todo dia {diaVencimento}?
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setConfirmando(null)} disabled={contratando !== null}
+                      className="flex-1 py-2 rounded-lg text-sm border disabled:opacity-60"
+                      style={{ borderColor: 'var(--border)', color: 'var(--ink)' }}>
+                      Cancelar
+                    </button>
+                    <button onClick={() => contratar('consorcio')} disabled={contratando !== null}
+                      className="flex-1 py-2 rounded-lg text-sm text-white disabled:opacity-60"
+                      style={{ background: 'var(--brand)' }}>
+                      {contratando === 'consorcio' ? 'Confirmando...' : 'Confirmar'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setConfirmando('consorcio')} disabled={contratando !== null || !user}
+                  className="w-full mt-4 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60 flex items-center justify-center gap-1.5"
+                  style={{ background: 'var(--brand)' }}>
+                  {contratado === 'consorcio'
+                    ? <><Check className="w-4 h-4" /> Adicionado às despesas</>
+                    : 'Contratar este plano'}
+                </button>
+              )}
             </div>
           </div>
 
