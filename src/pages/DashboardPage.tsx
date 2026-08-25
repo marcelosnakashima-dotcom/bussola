@@ -3,7 +3,6 @@ import { TrendingUp, TrendingDown, Calendar, Target, ArrowRight, Repeat, X } fro
 import { Link } from '@tanstack/react-router'
 import { useSummary, useCategoryTotals, useAssets, useTransactions, useRecurringExpenses } from '@/hooks/useData'
 import { formatBRL, formatDate } from '@/lib/supabase'
-import { NotificationSettings } from '@/components/notifications/NotificationSettings'
 import { DistributionBar } from '@/components/charts/DistributionBar'
 import { SaldoChart, CategoriaChart } from '@/components/charts/AnimatedCharts'
 
@@ -94,9 +93,6 @@ export function DashboardPage() {
 
       {/* Evolução do saldo */}
       <SaldoChart />
-
-      {/* Notifications */}
-      <NotificationSettings />
 
       {/* 50/30/20 */}
       {summary && (
