@@ -4,8 +4,8 @@ import { Link } from '@tanstack/react-router'
 import { useSummary, useCategoryTotals, useAssets, useTransactions, useRecurringExpenses } from '@/hooks/useData'
 import { formatBRL, formatDate } from '@/lib/supabase'
 import { NotificationSettings } from '@/components/notifications/NotificationSettings'
-import { DonutChart } from '@/components/charts/DonutChart'
 import { DistributionBar } from '@/components/charts/DistributionBar'
+import { SaldoChart, CategoriaChart } from '@/components/charts/AnimatedCharts'
 
 const CATEGORY_COLORS = [
   '#2A6049','#3C7A5C','#1E4535','#6B9E80','#4A8C67',
@@ -91,6 +91,9 @@ export function DashboardPage() {
           </div>
         ))}
       </div>
+
+      {/* Evolução do saldo */}
+      <SaldoChart />
 
       {/* Notifications */}
       <NotificationSettings />
@@ -189,32 +192,9 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {/* Donut chart */}
-        <div className="lg:col-span-2 rounded-2xl border bg-white p-5"
-          style={{ borderColor: 'var(--border)' }}>
-          <h3 className="font-display text-lg mb-4" style={{ color: 'var(--ink)' }}>
-            Gastos por categoria
-          </h3>
-          {categoryTotals.length === 0
-            ? <p className="text-sm text-center py-8" style={{ color: 'var(--muted)' }}>
-                Sem dados neste mês
-              </p>
-            : <>
-                <DonutChart data={categoryTotals} colors={CATEGORY_COLORS} />
-                <div className="mt-4 space-y-1.5">
-                  {categoryTotals.slice(0, 6).map((c, i) => (
-                    <div key={c.id} className="flex items-center gap-2 text-xs">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ background: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }} />
-                      <span className="truncate flex-1" style={{ color: 'var(--ink)' }}>{c.nome}</span>
-                      <span className="font-mono flex-shrink-0" style={{ color: 'var(--muted)' }}>
-                        {formatBRL(c.valor)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </>
-          }
+        {/* Donut chart (animado) */}
+        <div className="lg:col-span-2">
+          <CategoriaChart data={categoryTotals} colors={CATEGORY_COLORS} />
         </div>
       </div>
 
