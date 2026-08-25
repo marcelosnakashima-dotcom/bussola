@@ -6,11 +6,6 @@ import { formatBRL, formatDate } from '@/lib/supabase'
 import { DistributionBar } from '@/components/charts/DistributionBar'
 import { SaldoChart, CategoriaChart } from '@/components/charts/AnimatedCharts'
 
-const CATEGORY_COLORS = [
-  '#2A6049','#3C7A5C','#1E4535','#6B9E80','#4A8C67',
-  '#8BBF9F','#2E7D52','#5A9E72','#1A5C3A','#7BB89A',
-]
-
 export function DashboardPage() {
   const [month] = useState<Date>(new Date())
   const { summary, loading: sumLoading } = useSummary(month)
@@ -188,9 +183,9 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {/* Donut chart (animado) */}
+        {/* Donut chart (animado e colorido) */}
         <div className="lg:col-span-2">
-          <CategoriaChart data={categoryTotals} colors={CATEGORY_COLORS} />
+          <CategoriaChart data={categoryTotals} />
         </div>
       </div>
 
