@@ -204,6 +204,11 @@ export function CategoriaChart({ data = [], colors = DEFAULT_PALETTE, titulo = '
   const total = itens.reduce((s, d) => s + d.valor, 0)
   const totalAnimado = useCountUp(total)
 
+  const pieExtraProps = {
+    activeIndex: activeIndex ?? undefined,
+    activeShape: ActiveSlice,
+  } as any
+
   return (
     <div className="rounded-2xl border bg-white p-5" style={{ borderColor: 'var(--border)' }}>
       <h3 className="font-display text-lg mb-4" style={{ color: 'var(--ink)' }}>{titulo}</h3>
@@ -218,10 +223,9 @@ export function CategoriaChart({ data = [], colors = DEFAULT_PALETTE, titulo = '
                 <Pie
                   data={itens} dataKey="valor" nameKey="nome" innerRadius={62} outerRadius={92}
                   paddingAngle={3} stroke="none" animationDuration={850} animationEasing="ease-out"
-                  activeIndex={activeIndex ?? undefined}
-                  activeShape={ActiveSlice}
                   onMouseEnter={(_: any, i: number) => setActiveIndex(i)}
                   onMouseLeave={() => setActiveIndex(null)}
+                  {...pieExtraProps}
                 >
                   {itens.map((_, i) => (
                     <Cell key={i} fill={colors[i % colors.length]}
