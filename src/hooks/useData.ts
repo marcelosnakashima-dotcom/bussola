@@ -290,3 +290,38 @@ export function useUserRole() {
 
   return { role, loading, isAdmin: role === 'admin' }
 }
+
+// ─── Diagnóstico financeiro ─────────────────────────────────────────────────
+export function useDiagnostico() {
+  const [salvando, setSalvando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+
+  const salvar = async (respostas: Record<string, any>) => {
+    setSalvando(true)
+    setErro(null)
+    const userId = await uid()
+    if (!userId) {
+      setSalvando(false)
+      setErro('Você precisa estar logado para salvar o diagnóstico.')
+      return null
+    }
+    const { data, error: err } = await supabase
+      .from('diagnosticos')
+      .insert({
+        user_id: userId,
+        nome_cliente: respostas.nomeCompleto ?? null,
+        telefone: respostas.telefone ?? null,
+        email: respostas.email ?? null,
+        perfil_investidor: respostas.tolerancia ?? null,
+        respostas,
+        concluido: true,
+      })
+      .select()
+      .single()
+    setSalvando(false)
+    if (err) { setErro('Não foi possível salvar agora. Tenta de novo em instantes.'); return null }
+    return data
+  }
+
+  return { salvar, salvando, erro }
+}
