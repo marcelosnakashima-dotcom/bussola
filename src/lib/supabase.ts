@@ -9,7 +9,7 @@ if (!SUPABASE_URL || !SUPABASE_ANON) {
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON)
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────
 
 export type UserRole = 'user' | 'admin'
 
@@ -111,7 +111,20 @@ export interface RecurringExpense {
   created_at: string
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+export interface Diagnostico {
+  id: string
+  user_id: string
+  nome_cliente: string | null
+  telefone: string | null
+  email: string | null
+  perfil_investidor: 'Conservador' | 'Moderado' | 'Arrojado' | null
+  respostas: Record<string, any>
+  concluido: boolean
+  created_at: string
+  updated_at: string
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────
 
 export const formatBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })
