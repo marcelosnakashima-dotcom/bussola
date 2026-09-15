@@ -9,6 +9,7 @@ import { GoalsPage } from '@/pages/GoalsPage'
 import { AdminPage } from '@/pages/AdminPage'
 import { SimuladorPage } from '@/pages/SimuladorPage'
 import { ProfilePage } from '@/pages/ProfilePage'
+import { DiagnosticoPage } from '@/pages/DiagnosticoPage'
 
 const rootRoute = createRootRoute({ component: () => <Outlet /> })
 const authRoute = createRoute({ getParentRoute: () => rootRoute, path: '/auth', component: AuthPage })
@@ -33,13 +34,14 @@ const importRoute = createRoute({ getParentRoute: () => appRoute, path: '/import
 const assetsRoute = createRoute({ getParentRoute: () => appRoute, path: '/ativos', component: AssetsPage })
 const goalsRoute = createRoute({ getParentRoute: () => appRoute, path: '/metas', component: GoalsPage })
 const simuladorRoute = createRoute({ getParentRoute: () => appRoute, path: '/simulador', component: SimuladorPage })
+const diagnosticoRoute = createRoute({ getParentRoute: () => appRoute, path: '/diagnostico', component: DiagnosticoPage })
 const profileRoute = createRoute({ getParentRoute: () => appRoute, path: '/perfil', component: ProfilePage })
 const adminRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin', component: AdminPage })
 
 const router = createRouter({
   routeTree: rootRoute.addChildren([
     authRoute,
-    appRoute.addChildren([dashRoute, importRoute, assetsRoute, goalsRoute, simuladorRoute, profileRoute, adminRoute]),
+    appRoute.addChildren([dashRoute, importRoute, assetsRoute, goalsRoute, simuladorRoute, diagnosticoRoute, profileRoute, adminRoute]),
   ]),
   history: createHashHistory(),
 })
