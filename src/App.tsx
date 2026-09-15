@@ -1,4 +1,5 @@
-import { createRouter, RouterProvider, createRoute, createRootRoute, createHashHistory, Outlet, Navigate } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { createRouter, RouterProvider, createRoute, createRootRoute, createHashHistory, Outlet, Navigate, useLocation, useNavigate } from '@tanstack/react-router'
 import { AuthProvider, useAuth } from '@/lib/auth'
 import { AppShell } from '@/components/layout/AppShell'
 import { AuthPage } from '@/pages/AuthPage'
@@ -16,6 +17,21 @@ const authRoute = createRoute({ getParentRoute: () => rootRoute, path: '/auth', 
 
 function AuthGuard() {
   const { user, loading } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // Se o usuário chegou autenticado numa rota protegida por causa de um link
+  // direto (ex: /diagnostico), volta pra essa mesma rota depois do login.
+  useEffect(() => {
+    if (!loading && user) {
+      const target = sessionStorage.getItem('arsen_redirect_after_login')
+      if (target) {
+        sessionStorage.removeItem('arsen_redirect_after_login')
+        if (target !== location.pathname) navigate({ to: target as any })
+      }
+    }
+  }, [user, loading])
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--canvas)' }}>
@@ -24,7 +40,10 @@ function AuthGuard() {
       </div>
     )
   }
-  if (!user) return <Navigate to="/auth" />
+  if (!user) {
+    sessionStorage.setItem('arsen_redirect_after_login', location.pathname)
+    return <Navigate to="/auth" />
+  }
   return <AppShell><Outlet /></AppShell>
 }
 
