@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { ArsenLogo } from '@/components/ArsenLogo'
 import { supabase } from '@/lib/supabase'
 
 export function AuthPage() {
+  const navigate = useNavigate()
   const [email,   setEmail]   = useState('')
   const [pass,    setPass]    = useState('')
   const [loading, setLoading] = useState(false)
@@ -15,6 +17,9 @@ export function AuthPage() {
     try {
       const { error: err } = await supabase.auth.signInWithPassword({ email, password: pass })
       if (err) throw err
+      const target = sessionStorage.getItem('arsen_redirect_after_login')
+      sessionStorage.removeItem('arsen_redirect_after_login')
+      navigate({ to: (target || '/') as any })
     } catch (err: any) {
       setError(err.message ?? 'Erro ao autenticar.')
     } finally {
