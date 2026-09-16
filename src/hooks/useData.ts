@@ -209,7 +209,12 @@ export function useRecurringExpenses() {
     setExpenses(prev => prev.filter(e => e.id !== id))
   }
 
-  return { expenses, loading, refresh: load, deactivate }
+  const update = async (id: string, e: Partial<Pick<RecurringExpense, 'description' | 'category' | 'amount' | 'due_day'>>) => {
+    await supabase.from('recurring_expenses').update(e).eq('id', id)
+    await load()
+  }
+
+  return { expenses, loading, refresh: load, deactivate, update }
 }
 
 // ─── Plan ───────────────────────────────────────────────────
