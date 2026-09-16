@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import {
-  LayoutDashboard, Upload, Wallet, SlidersHorizontal,
+  LayoutDashboard, Upload, Wallet, CreditCard, SlidersHorizontal,
   ShieldCheck, LogOut, Calculator, User, ClipboardList
 } from 'lucide-react'
 import { ArsenLogo } from '@/components/ArsenLogo'
@@ -9,13 +9,14 @@ import { useAuth } from '@/lib/auth'
 import { useUserRole } from '@/hooks/useData'
 
 const NAV = [
-  { to: '/',            label: 'Visão geral',            short: 'Visão',       Icon: LayoutDashboard },
-  { to: '/importar',    label: 'Importar despesas',      short: 'Importar',    Icon: Upload },
-  { to: '/ativos',      label: 'Ativos e patrimônio',    short: 'Ativos',      Icon: Wallet },
-  { to: '/metas',       label: 'Metas 50/30/20',         short: 'Metas',       Icon: SlidersHorizontal },
-  { to: '/simulador',   label: 'Simulador',              short: 'Simular',     Icon: Calculator },
-  { to: '/diagnostico', label: 'Diagnóstico financeiro',  short: 'Diagnóstico', Icon: ClipboardList },
-  { to: '/perfil',      label: 'Perfil',                 short: 'Perfil',      Icon: User },
+  { to: '/',            label: 'Visão geral',             short: 'Visão',       Icon: LayoutDashboard },
+  { to: '/importar',    label: 'Importar despesas',       short: 'Importar',    Icon: Upload },
+  { to: '/ativos',      label: 'Ativos e patrimônio',     short: 'Ativos',      Icon: Wallet },
+  { to: '/dividas',     label: 'Dívidas e financiamentos', short: 'Dívidas',    Icon: CreditCard },
+  { to: '/metas',       label: 'Metas 50/30/20',          short: 'Metas',       Icon: SlidersHorizontal },
+  { to: '/simulador',   label: 'Simulador',               short: 'Simular',     Icon: Calculator },
+  { to: '/diagnostico', label: 'Diagnóstico financeiro',   short: 'Diagnóstico', Icon: ClipboardList },
+  { to: '/perfil',      label: 'Perfil',                  short: 'Perfil',      Icon: User },
 ]
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -29,7 +30,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   ]
 
   const gridCols =
-    navItems.length >= 8 ? 'grid-cols-8' :
+    navItems.length >= 9 ? 'grid-cols-9' :
+    navItems.length === 8 ? 'grid-cols-8' :
     navItems.length === 7 ? 'grid-cols-7' :
     navItems.length === 6 ? 'grid-cols-6' :
     navItems.length === 5 ? 'grid-cols-5' : 'grid-cols-4'
