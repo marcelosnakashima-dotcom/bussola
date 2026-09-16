@@ -435,6 +435,7 @@ export function useDiagnostico() {
       setErro('Você precisa estar logado para salvar o diagnóstico.')
       return null
     }
+    const termoAceito = respostas.termoAceite === true
     const { data, error: err } = await supabase
       .from('diagnosticos')
       .insert({
@@ -444,6 +445,8 @@ export function useDiagnostico() {
         email: respostas.email ?? null,
         respostas,
         concluido: true,
+        termo_aceito: termoAceito,
+        termo_aceito_em: termoAceito ? new Date().toISOString() : null,
       })
       .select()
       .single()
