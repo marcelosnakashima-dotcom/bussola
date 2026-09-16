@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { ArrowRight, Plus, Trash2, RotateCcw } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
@@ -49,7 +50,7 @@ const SECTIONS = [
   { id: 'renda', num: 2, title: 'Sua atividade e sua renda', subtitle: 'Entender de onde vem o dinheiro é o primeiro passo do diagnóstico.' },
   { id: 'despesas', num: 3, title: 'Suas despesas mensais', subtitle: 'Vamos mapear para onde o dinheiro vai — fixas, variáveis e anuais.' },
   { id: 'patrimonio', num: 4, title: 'Seu patrimônio hoje', subtitle: 'O que você já construiu, e o que ainda compromete sua renda.' },
-  { id: 'perfil', num: 5, title: 'Seu perfil como investidor', subtitle: 'Como você se relaciona com risco, tempo e experiência.' },
+  { id: 'perfil', num: 5, title: 'Seus investimentos', subtitle: 'O que você já tem aplicado hoje.' },
   { id: 'objetivos', num: 6, title: 'Seus objetivos financeiros', subtitle: 'O que você quer alcançar — e em que prazo.' },
   { id: 'seguros', num: 7, title: 'Proteção: seguros', subtitle: 'O que aconteceria com sua família se algo saísse do previsto.' },
   { id: 'estruturacao', num: 8, title: 'Estruturação e sucessão', subtitle: 'Como seu patrimônio se organiza — hoje e para o futuro.' },
@@ -115,7 +116,6 @@ const QUESTIONS_BY_SECTION: Record<string, { id: string; title: string; subtitle
     { id: 'pa1', title: 'O que você já construiu?', subtitle: 'Valor estimado de mercado de cada item.', fields: [
       { key: 'imoveis', label: 'Imóveis', type: 'currency' },
       { key: 'veiculos', label: 'Veículos', type: 'currency' },
-      { key: 'investimentosAtivo', label: 'Investimentos financeiros', type: 'currency' },
       { key: 'participacoes', label: 'Participações societárias / empresas', type: 'currency' },
       { key: 'saldoContas', label: 'Saldo em conta corrente e poupança', type: 'currency' },
     ] },
@@ -133,16 +133,9 @@ const QUESTIONS_BY_SECTION: Record<string, { id: string; title: string; subtitle
     ] },
   ],
   perfil: [
-    { id: 'pf1', title: 'Como você reage a oscilações no mercado?', subtitle: 'Isso ajuda a entender seu perfil de risco.', fields: [
-      { key: 'tolerancia', type: 'radio', options: [
-        { value: 'Conservador', desc: 'Prefiro segurança, mesmo com retorno menor' },
-        { value: 'Moderado', desc: 'Aceito algum risco por um retorno melhor' },
-        { value: 'Arrojado', desc: 'Busco retorno alto e tolero oscilações fortes' },
-      ] },
-    ] },
-    { id: 'pf2', title: 'Sua experiência e seu horizonte', fields: [
-      { key: 'experiencia', label: 'Experiência com investimentos', type: 'radio', options: ['Nenhuma', 'Pouca', 'Alguma', 'Bastante'] },
-      { key: 'horizonte', label: 'Prazo para usar a maior parte desse dinheiro', type: 'radio', options: ['Até 1 ano', 'De 1 a 5 anos', 'Mais de 5 anos'] },
+    { id: 'pf1', title: 'Você já tem investimentos financeiros?', fields: [
+      { key: 'temInvestimentos', type: 'boolean' },
+      { key: 'valorInvestimentos', label: 'Qual o valor total aplicado?', type: 'currency', showIf: { key: 'temInvestimentos', equals: true } },
     ] },
   ],
   objetivos: [
