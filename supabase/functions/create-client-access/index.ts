@@ -1,11 +1,9 @@
 // supabase/functions/create-client-access/index.ts
-// Deploy: supabase functions deploy create-client-access
-// Secrets necessários:
-//   SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY → automáticos
-//
 // Cria uma conta de acesso (e-mail + senha) para um cliente novo.
-// Só pode ser chamada por um usuário autenticado com role 'admin' em user_roles.
-// O e-mail já entra confirmado (não depende de fluxo de confirmação por e-mail).
+// So pode ser chamada por um usuario autenticado com role 'admin' em user_roles.
+// O e-mail ja entra confirmado (nao depende de fluxo de confirmacao por e-mail).
+// A conta e criada com a flag must_change_password: true, que obriga o
+// cliente a trocar a senha no primeiro login (ver ForcePasswordChangePage).
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -40,15 +38,15 @@ Deno.serve(async (req) => {
     });
 
   try {
-    // 1. Identifica quem está chamando a partir do token da sessão
+    // 1. Identifica quem esta chamando a partir do token da sessao
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.replace("Bearer ", "");
-    if (!token) return json({ error: "Não autenticado." }, 401);
+    if (!token) return json({ error: "Nao autenticado." }, 401);
 
     const { data: callerData, error: callerErr } = await admin.auth.getUser(token);
-    if (callerErr || !callerData?.user) return json({ error: "Sessão inválida." }, 401);
+    if (callerErr || !callerData?.user) return json({ error: "Sessao invalida." }, 401);
 
-    // 2. Confere se quem está chamando é admin
+    // 2. Confere se quem esta chamando e admin
     const { data: roleRow } = await admin
       .from("user_roles")
       .select("role")
@@ -59,9 +57,9 @@ Deno.serve(async (req) => {
       return json({ error: "Apenas administradores podem criar acessos." }, 403);
     }
 
-    // 3. Cria o usuário
+    // 3. Cria o usuario
     const body = await req.json() as { email?: string; nome?: string; senha?: string };
-    if (!body.email) return json({ error: "E-mail é obrigatório." }, 400);
+    if (!body.email) return json({ error: "E-mail e obrigatorio." }, 400);
 
     const senha = body.senha && body.senha.length >= 8 ? body.senha : randomPassword();
 
@@ -69,7 +67,10 @@ Deno.serve(async (req) => {
       email: body.email,
       password: senha,
       email_confirm: true,
-      user_metadata: body.nome ? { full_name: body.nome } : undefined,
+      user_metadata: {
+        ...(body.nome ? { full_name: body.nome } : {}),
+        must_change_password: true,
+      },
     });
 
     if (createErr) return json({ error: createErr.message }, 400);
