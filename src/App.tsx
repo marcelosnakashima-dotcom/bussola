@@ -3,6 +3,7 @@ import { createRouter, RouterProvider, createRoute, createRootRoute, createHashH
 import { AuthProvider, useAuth } from '@/lib/auth'
 import { AppShell } from '@/components/layout/AppShell'
 import { AuthPage } from '@/pages/AuthPage'
+import { ForcePasswordChangePage } from '@/pages/ForcePasswordChangePage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ImportPage } from '@/pages/ImportPage'
 import { AssetsPage } from '@/pages/AssetsPage'
@@ -44,6 +45,11 @@ function AuthGuard() {
   if (!user) {
     sessionStorage.setItem('arsen_redirect_after_login', location.pathname)
     return <Navigate to="/auth" />
+  }
+  // Contas criadas pelo admin nascem com essa flag e precisam trocar a
+  // senha temporária antes de acessar qualquer outra parte do app.
+  if (user.user_metadata?.must_change_password === true) {
+    return <ForcePasswordChangePage />
   }
   return <AppShell><Outlet /></AppShell>
 }
