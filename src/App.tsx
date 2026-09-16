@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { createRouter, RouterProvider, createRoute, createRootRoute, createHashHistory, Outlet, Navigate, useLocation, useNavigate } from '@tanstack/react-router'
+import { createRouter, RouterProvider, createRoute, createRootRoute, createHashHistory, Outlet, Navigate, useNavigate } from '@tanstack/react-router'
 import { AuthProvider, useAuth } from '@/lib/auth'
 import { AppShell } from '@/components/layout/AppShell'
 import { AuthPage } from '@/pages/AuthPage'
@@ -14,12 +14,24 @@ import { SimuladorPage } from '@/pages/SimuladorPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { DiagnosticoPage } from '@/pages/DiagnosticoPage'
 
+// Le a rota atual direto do hash do navegador (fonte da verdade real),
+// em vez do hook useLocation() do router: esse hook pode refletir, de
+// forma otimista, o DESTINO de uma navegacao ainda em andamento (por
+// exemplo, o proprio "/auth" para o qual estamos prestes a redirecionar)
+// no mesmo ciclo de render em que decidimos salvar a rota de origem.
+// Usar isso causava o bug de sempre salvar "/auth" como destino do
+// redirecionamento pos-login, em vez da rota que a pessoa realmente
+// tentou acessar.
+function currentAppPath() {
+  const hash = window.location.hash.replace(/^#/, '')
+  return hash || '/'
+}
+
 const rootRoute = createRootRoute({ component: () => <Outlet /> })
 const authRoute = createRoute({ getParentRoute: () => rootRoute, path: '/auth', component: AuthPage })
 
 function AuthGuard() {
   const { user, loading } = useAuth()
-  const location = useLocation()
   const navigate = useNavigate()
 
   // Se o usuário chegou autenticado numa rota protegida por causa de um link
@@ -27,9 +39,9 @@ function AuthGuard() {
   useEffect(() => {
     if (!loading && user) {
       const target = sessionStorage.getItem('arsen_redirect_after_login')
-      if (target) {
-        sessionStorage.removeItem('arsen_redirect_after_login')
-        if (target !== location.pathname) navigate({ to: target as any })
+      sessionStorage.removeItem('arsen_redirect_after_login')
+      if (target && target !== '/auth' && target !== currentAppPath()) {
+        navigate({ to: target as any })
       }
     }
   }, [user, loading])
@@ -43,7 +55,10 @@ function AuthGuard() {
     )
   }
   if (!user) {
-    sessionStorage.setItem('arsen_redirect_after_login', location.pathname)
+    const path = currentAppPath()
+    if (path !== '/auth') {
+      sessionStorage.setItem('arsen_redirect_after_login', path)
+    }
     return <Navigate to="/auth" />
   }
   // Contas criadas pelo admin nascem com essa flag e precisam trocar a
