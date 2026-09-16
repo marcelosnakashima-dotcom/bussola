@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { supabase, type Category, type Transaction, type Asset, type UserPlan, type NotificationSettings, type RecurringExpense } from '@/lib/supabase'
+import { supabase, type Category, type Transaction, type Asset, type Debt, type UserPlan, type NotificationSettings, type RecurringExpense } from '@/lib/supabase'
 import { startOfMonth, endOfMonth, format } from 'date-fns'
 
 // ─── Auth helper ─────────────────────────────────────────
@@ -183,6 +183,47 @@ export function useAssets() {
   return { assets, loading, total, refresh: load, addAsset, updateAsset, deleteAsset }
 }
 
+// ─── Debts (dívidas e financiamentos) ──────────────────────────────────
+export function useDebts() {
+  const [debts,   setDebts]   = useState<Debt[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const userId = await uid()
+    if (!userId) { setLoading(false); return }
+    const { data } = await supabase
+      .from('debts')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at')
+    setDebts(data ?? [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const addDebt = async (d: Omit<Debt, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    const userId = await uid()
+    if (!userId) return
+    await supabase.from('debts').insert({ ...d, user_id: userId })
+    await load()
+  }
+
+  const updateDebt = async (id: string, d: Partial<Omit<Debt, 'id' | 'user_id'>>) => {
+    await supabase.from('debts').update(d).eq('id', id)
+    await load()
+  }
+
+  const deleteDebt = async (id: string) => {
+    await supabase.from('debts').delete().eq('id', id)
+    await load()
+  }
+
+  const total = debts.reduce((s, d) => s + Number(d.valor), 0)
+  return { debts, loading, total, refresh: load, addDebt, updateDebt, deleteDebt }
+}
+
 // ─── Recurring expenses ────────────────────────────────────────────
 export function useRecurringExpenses() {
   const [expenses, setExpenses] = useState<RecurringExpense[]>([])
@@ -298,9 +339,9 @@ export function useUserRole() {
 
 // ─── Diagnóstico financeiro ──────────────────────────────────────
 // Depois de salvar o diagnóstico, traduz automaticamente as respostas em
-// registros reais do dashboard (renda base, ativos e despesas recorrentes).
-// Roda em "melhor esforço": se essa etapa falhar, o diagnóstico em si
-// já foi salvo e não é desfeito.
+// registros reais do dashboard (renda base, ativos, dívidas e despesas
+// recorrentes). Roda em "melhor esforço": se essa etapa falhar, o
+// diagnóstico em si já foi salvo e não é desfeito.
 async function aplicarDiagnosticoNoDashboard(userId: string, r: Record<string, any>) {
   const num = (v: any): number | null => (typeof v === 'number' && v > 0 ? v : null)
 
@@ -340,7 +381,25 @@ async function aplicarDiagnosticoNoDashboard(userId: string, r: Record<string, a
     })
   }
 
-  // 3. Despesas fixas declaradas viram "Despesas recorrentes"
+  // 3. Dívidas declaradas viram registros em "Dívidas"
+  const dividas: { tipo: string; nome: string; valor: number }[] = []
+  if (num(r.financiamentoImovel))  dividas.push({ tipo: 'financiamento_imovel',  nome: 'Financiamento imobiliário', valor: num(r.financiamentoImovel)! })
+  if (num(r.financiamentoVeiculo)) dividas.push({ tipo: 'financiamento_veiculo', nome: 'Financiamento de veículo',  valor: num(r.financiamentoVeiculo)! })
+  if (num(r.emprestimos))          dividas.push({ tipo: 'emprestimo',            nome: 'Empréstimos pessoais',      valor: num(r.emprestimos)! })
+  if (num(r.cartaoCredito))        dividas.push({ tipo: 'cartao_credito',        nome: 'Cartão de crédito',         valor: num(r.cartaoCredito)! })
+  if (num(r.dividasTerceiros))     dividas.push({ tipo: 'terceiros',             nome: 'Dívidas com terceiros',     valor: num(r.dividasTerceiros)! })
+
+  for (const d of dividas) {
+    await supabase.from('debts').insert({
+      user_id: userId,
+      tipo: d.tipo,
+      nome: d.nome,
+      valor: d.valor,
+      detalhe: 'Importado automaticamente do diagnóstico financeiro.',
+    })
+  }
+
+  // 4. Despesas fixas declaradas viram "Despesas recorrentes"
   // (despesas variáveis e sazonais não viram lançamento fixo por não terem
   // um dia de vencimento real — ficam guardadas no registro do diagnóstico)
   const despesas: { description: string; category: string; amount: number }[] = []
