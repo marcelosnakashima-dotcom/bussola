@@ -131,6 +131,8 @@ export interface Diagnostico {
   perfil_investidor: 'Conservador' | 'Moderado' | 'Arrojado' | null
   respostas: Record<string, any>
   concluido: boolean
+  termo_aceito: boolean
+  termo_aceito_em: string | null
   created_at: string
   updated_at: string
 }
