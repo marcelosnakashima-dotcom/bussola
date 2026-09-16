@@ -363,7 +363,8 @@ async function aplicarDiagnosticoNoDashboard(userId: string, r: Record<string, a
   const ativos: { tipo: string; nome: string; valor: number }[] = []
   if (num(r.imoveis))             ativos.push({ tipo: 'imovel',       nome: 'Imóveis',                      valor: num(r.imoveis)! })
   if (num(r.veiculos))            ativos.push({ tipo: 'outro',        nome: 'Veículos',                     valor: num(r.veiculos)! })
-  if (num(r.investimentosAtivo))  ativos.push({ tipo: 'investimento', nome: 'Investimentos financeiros',    valor: num(r.investimentosAtivo)! })
+  if (r.temInvestimentos === true && num(r.valorInvestimentos))
+                                   ativos.push({ tipo: 'investimento', nome: 'Investimentos financeiros',    valor: num(r.valorInvestimentos)! })
   if (num(r.participacoes))       ativos.push({ tipo: 'outro',        nome: 'Participações societárias',    valor: num(r.participacoes)! })
   if (num(r.saldoContas))         ativos.push({ tipo: 'outro',        nome: 'Saldo em conta / poupança',     valor: num(r.saldoContas)! })
   if (num(r.valorReserva))        ativos.push({ tipo: 'reserva',      nome: 'Reserva de emergência',        valor: num(r.valorReserva)! })
@@ -441,7 +442,6 @@ export function useDiagnostico() {
         nome_cliente: respostas.nomeCompleto ?? null,
         telefone: respostas.telefone ?? null,
         email: respostas.email ?? null,
-        perfil_investidor: respostas.tolerancia ?? null,
         respostas,
         concluido: true,
       })
