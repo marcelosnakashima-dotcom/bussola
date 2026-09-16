@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TrendingUp, TrendingDown, Calendar, Target, ArrowRight, Repeat, X } from 'lucide-react'
+import { TrendingUp, TrendingDown, Calendar, Target, ArrowRight, Repeat, X, Pencil, Check } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { useSummary, useCategoryTotals, useAssets, useTransactions, useRecurringExpenses } from '@/hooks/useData'
 import { formatBRL, formatDate } from '@/lib/supabase'
@@ -12,10 +12,38 @@ export function DashboardPage() {
   const categoryTotals = useCategoryTotals(month)
   const { assets, total: patrimonioTotal, loading: assetsLoading } = useAssets()
   const { transactions, loading: txLoading } = useTransactions(month)
-  const { expenses: recurringExpenses, loading: recurringLoading, deactivate: deactivateRecurring } = useRecurringExpenses()
+  const { expenses: recurringExpenses, loading: recurringLoading, deactivate: deactivateRecurring, update: updateRecurring } = useRecurringExpenses()
 
   const monthLabel = month.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
   const recentTx   = transactions.filter(t => t.status === 'confirmada').slice(0, 6)
+
+  // ─── Edição inline de despesa recorrente ──────────────────────────────
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState<{ description: string; category: string; amount: number | ''; due_day: number | '' }>({
+    description: '', category: '', amount: '', due_day: '',
+  })
+
+  const startEdit = (e: { id: string; description: string; category: string | null; amount: number; due_day: number }) => {
+    setEditingId(e.id)
+    setEditForm({ description: e.description, category: e.category ?? '', amount: e.amount, due_day: e.due_day })
+  }
+
+  const cancelEdit = () => setEditingId(null)
+
+  const saveEdit = async (id: string) => {
+    await updateRecurring(id, {
+      description: editForm.description || 'Despesa recorrente',
+      category: editForm.category || null,
+      amount: editForm.amount === '' ? 0 : Number(editForm.amount),
+      due_day: editForm.due_day === '' ? 1 : Number(editForm.due_day),
+    })
+    setEditingId(null)
+  }
+
+  const handleEditAmountChange = (ev: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = ev.target.value.replace(/\D/g, '')
+    setEditForm(prev => ({ ...prev, amount: digits ? parseInt(digits, 10) / 100 : '' }))
+  }
 
   const cards = [
     {
@@ -203,26 +231,76 @@ export function DashboardPage() {
           </div>
           <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
             {recurringExpenses.map(e => (
-              <div key={e.id} className="flex items-center justify-between px-5 py-3 gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate" style={{ color: 'var(--ink)' }}>
-                    {e.description}
-                  </p>
-                  <p className="text-[11px]" style={{ color: 'var(--muted)' }}>
-                    {e.category ?? 'Sem categoria'} · todo dia {e.due_day}
-                  </p>
+              editingId === e.id ? (
+                <div key={e.id} className="px-5 py-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] mb-1 block" style={{ color: 'var(--muted)' }}>Descrição</label>
+                      <input type="text" value={editForm.description}
+                        onChange={ev => setEditForm(prev => ({ ...prev, description: ev.target.value }))}
+                        className="w-full border rounded-lg px-2.5 py-1.5 text-sm" style={{ borderColor: 'var(--border)' }} />
+                    </div>
+                    <div>
+                      <label className="text-[11px] mb-1 block" style={{ color: 'var(--muted)' }}>Categoria</label>
+                      <input type="text" value={editForm.category}
+                        onChange={ev => setEditForm(prev => ({ ...prev, category: ev.target.value }))}
+                        className="w-full border rounded-lg px-2.5 py-1.5 text-sm" style={{ borderColor: 'var(--border)' }} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] mb-1 block" style={{ color: 'var(--muted)' }}>Valor</label>
+                      <input type="text" inputMode="numeric" placeholder="R$ 0,00"
+                        value={editForm.amount === '' ? '' : formatBRL(Number(editForm.amount))}
+                        onChange={handleEditAmountChange}
+                        className="w-full border rounded-lg px-2.5 py-1.5 text-sm font-mono" style={{ borderColor: 'var(--border)' }} />
+                    </div>
+                    <div>
+                      <label className="text-[11px] mb-1 block" style={{ color: 'var(--muted)' }}>Dia do vencimento</label>
+                      <input type="number" min={1} max={31} value={editForm.due_day}
+                        onChange={ev => setEditForm(prev => ({ ...prev, due_day: ev.target.value === '' ? '' : Number(ev.target.value) }))}
+                        className="w-full border rounded-lg px-2.5 py-1.5 text-sm" style={{ borderColor: 'var(--border)' }} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end pt-1">
+                    <button onClick={() => saveEdit(e.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white"
+                      style={{ background: 'var(--brand)' }}>
+                      <Check className="w-3.5 h-3.5" /> Salvar
+                    </button>
+                    <button onClick={cancelEdit}
+                      className="px-3 py-1.5 rounded-lg text-xs border" style={{ borderColor: 'var(--border)' }}>
+                      Cancelar
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <p className="text-sm font-mono font-medium" style={{ color: 'var(--ink)' }}>
-                    {formatBRL(e.amount)}
-                  </p>
-                  <button onClick={() => deactivateRecurring(e.id)}
-                    title="Remover despesa recorrente"
-                    className="p-1 rounded hover:bg-gray-100 transition-colors">
-                    <X className="w-3.5 h-3.5" style={{ color: 'var(--muted)' }} />
-                  </button>
+              ) : (
+                <div key={e.id} className="flex items-center justify-between px-5 py-3 gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate" style={{ color: 'var(--ink)' }}>
+                      {e.description}
+                    </p>
+                    <p className="text-[11px]" style={{ color: 'var(--muted)' }}>
+                      {e.category ?? 'Sem categoria'} · todo dia {e.due_day}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <p className="text-sm font-mono font-medium" style={{ color: 'var(--ink)' }}>
+                      {formatBRL(e.amount)}
+                    </p>
+                    <button onClick={() => startEdit(e)}
+                      title="Editar despesa recorrente"
+                      className="p-1 rounded hover:bg-gray-100 transition-colors">
+                      <Pencil className="w-3.5 h-3.5" style={{ color: 'var(--muted)' }} />
+                    </button>
+                    <button onClick={() => deactivateRecurring(e.id)}
+                      title="Remover despesa recorrente"
+                      className="p-1 rounded hover:bg-gray-100 transition-colors">
+                      <X className="w-3.5 h-3.5" style={{ color: 'var(--muted)' }} />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )
             ))}
           </div>
         </div>
