@@ -2,13 +2,13 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase, type Category, type Transaction, type Asset, type UserPlan, type NotificationSettings, type RecurringExpense } from '@/lib/supabase'
 import { startOfMonth, endOfMonth, format } from 'date-fns'
 
-// ─── Auth helper ──────────────────────────────────────────────────────────────
+// ─── Auth helper ─────────────────────────────────────────
 async function uid() {
   const { data } = await supabase.auth.getUser()
   return data.user?.id ?? null
 }
 
-// ─── Categories (static, cached globally) ────────────────────────────────────
+// ─── Categories (static, cached globally) ──────────────────────
 let _cats: Category[] | null = null
 
 export function useCategories() {
@@ -28,7 +28,7 @@ export function useCategories() {
   return { categories, loading, byId }
 }
 
-// ─── Transactions ─────────────────────────────────────────────────────────────
+// ─── Transactions ────────────────────────────────────────────
 export function useTransactions(month?: Date) {
   const ref   = month ?? new Date()
   const from  = format(startOfMonth(ref), 'yyyy-MM-dd')
@@ -89,7 +89,7 @@ export function useTransactions(month?: Date) {
   return { transactions, loading, error, refresh: load, addTransaction, deleteTransaction, bulkInsert }
 }
 
-// ─── Summary ──────────────────────────────────────────────────────────────────
+// ─── Summary ───────────────────────────────────────────────
 export function useSummary(month?: Date) {
   const { transactions, loading: txLoading }  = useTransactions(month)
   const { categories, loading: catLoading }   = useCategories()
@@ -120,7 +120,7 @@ export function useSummary(month?: Date) {
   return { loading: false, summary: { totalDespesas, totalReceitas, sobrou, renda, classes, plan } }
 }
 
-// ─── Category totals (for donut chart) ───────────────────────────────────────
+// ─── Category totals (for donut chart) ─────────────────────────
 export function useCategoryTotals(month?: Date) {
   const { transactions } = useTransactions(month)
   const { categories }   = useCategories()
@@ -142,7 +142,7 @@ export function useCategoryTotals(month?: Date) {
     .sort((a, b) => b.valor - a.valor)
 }
 
-// ─── Assets ───────────────────────────────────────────────────────────────────
+// ─── Assets ────────────────────────────────────────────────
 export function useAssets() {
   const [assets,  setAssets]  = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
@@ -183,7 +183,7 @@ export function useAssets() {
   return { assets, loading, total, refresh: load, addAsset, updateAsset, deleteAsset }
 }
 
-// ─── Recurring expenses ───────────────────────────────────────────────────────
+// ─── Recurring expenses ────────────────────────────────────────────
 export function useRecurringExpenses() {
   const [expenses, setExpenses] = useState<RecurringExpense[]>([])
   const [loading,  setLoading]  = useState(true)
@@ -212,7 +212,7 @@ export function useRecurringExpenses() {
   return { expenses, loading, refresh: load, deactivate }
 }
 
-// ─── Plan ─────────────────────────────────────────────────────────────────────
+// ─── Plan ───────────────────────────────────────────────────
 const DEFAULT_PLAN: Omit<UserPlan, 'user_id' | 'updated_at'> = {
   necessidade: 0.5, desejo: 0.3, poupanca: 0.2
 }
@@ -242,7 +242,7 @@ export function usePlan() {
   return { plan, loading, savePlan }
 }
 
-// ─── Notification settings ────────────────────────────────────────────────────
+// ─── Notification settings ──────────────────────────────────────
 export function useNotificationSettings() {
   const [settings, setSettings] = useState<NotificationSettings | null>(null)
   const [loading,  setLoading]  = useState(true)
@@ -272,7 +272,7 @@ export function useNotificationSettings() {
   return { settings, loading, save, refresh: load }
 }
 
-// ─── User role ────────────────────────────────────────────────────────────────
+// ─── User role ──────────────────────────────────────────────
 export function useUserRole() {
   const [role,    setRole]    = useState<'user' | 'admin'>('user')
   const [loading, setLoading] = useState(true)
@@ -291,7 +291,72 @@ export function useUserRole() {
   return { role, loading, isAdmin: role === 'admin' }
 }
 
-// ─── Diagnóstico financeiro ─────────────────────────────────────────────────
+// ─── Diagnóstico financeiro ──────────────────────────────────────
+// Depois de salvar o diagnóstico, traduz automaticamente as respostas em
+// registros reais do dashboard (renda base, ativos e despesas recorrentes).
+// Roda em "melhor esforço": se essa etapa falhar, o diagnóstico em si
+// já foi salvo e não é desfeito.
+async function aplicarDiagnosticoNoDashboard(userId: string, r: Record<string, any>) {
+  const num = (v: any): number | null => (typeof v === 'number' && v > 0 ? v : null)
+
+  // 1. Renda informada vira a base do plano 50/30/20
+  const renda = (num(r.rendaFixa) ?? 0) + (num(r.rendaVariavel) ?? 0) + (num(r.outrasRendas) ?? 0)
+  if (renda > 0) {
+    const { data: planoAtual } = await supabase
+      .from('user_plan').select('necessidade, desejo, poupanca').eq('user_id', userId).maybeSingle()
+    await supabase.from('user_plan').upsert({
+      user_id: userId,
+      necessidade: planoAtual?.necessidade ?? 0.5,
+      desejo: planoAtual?.desejo ?? 0.3,
+      poupanca: planoAtual?.poupanca ?? 0.2,
+      renda_base: renda,
+    })
+  }
+
+  // 2. Patrimônio declarado vira registros em "Ativos"
+  const ativos: { tipo: string; nome: string; valor: number }[] = []
+  if (num(r.imoveis))             ativos.push({ tipo: 'imovel',       nome: 'Imóveis',                      valor: num(r.imoveis)! })
+  if (num(r.veiculos))            ativos.push({ tipo: 'outro',        nome: 'Veículos',                     valor: num(r.veiculos)! })
+  if (num(r.investimentosAtivo))  ativos.push({ tipo: 'investimento', nome: 'Investimentos financeiros',    valor: num(r.investimentosAtivo)! })
+  if (num(r.participacoes))       ativos.push({ tipo: 'outro',        nome: 'Participações societárias',    valor: num(r.participacoes)! })
+  if (num(r.saldoContas))         ativos.push({ tipo: 'outro',        nome: 'Saldo em conta / poupança',     valor: num(r.saldoContas)! })
+  if (num(r.valorReserva))        ativos.push({ tipo: 'reserva',      nome: 'Reserva de emergência',        valor: num(r.valorReserva)! })
+  if (r.apoliceVida === true && num(r.valorApolice))
+                                   ativos.push({ tipo: 'seguro',       nome: 'Seguro de vida',               valor: num(r.valorApolice)! })
+  if (num(r.consorciosAndamento)) ativos.push({ tipo: 'consorcio',    nome: 'Consórcio em andamento',       valor: num(r.consorciosAndamento)! })
+
+  for (const a of ativos) {
+    await supabase.from('assets').insert({
+      user_id: userId,
+      tipo: a.tipo,
+      nome: a.nome,
+      valor: a.valor,
+      detalhe: 'Importado automaticamente do diagnóstico financeiro.',
+    })
+  }
+
+  // 3. Despesas fixas declaradas viram "Despesas recorrentes"
+  // (despesas variáveis e sazonais não viram lançamento fixo por não terem
+  // um dia de vencimento real — ficam guardadas no registro do diagnóstico)
+  const despesas: { description: string; category: string; amount: number }[] = []
+  if (num(r.moradia))      despesas.push({ description: 'Moradia (via diagnóstico)',     category: 'Moradia',     amount: num(r.moradia)! })
+  if (num(r.educacao))     despesas.push({ description: 'Educação (via diagnóstico)',    category: 'Educação',    amount: num(r.educacao)! })
+  if (num(r.saudeDespesa)) despesas.push({ description: 'Saúde (via diagnóstico)',       category: 'Saúde',       amount: num(r.saudeDespesa)! })
+  if (num(r.transporte))   despesas.push({ description: 'Transporte (via diagnóstico)',  category: 'Transporte',  amount: num(r.transporte)! })
+  if (num(r.assinaturas))  despesas.push({ description: 'Assinaturas (via diagnóstico)',  category: 'Assinaturas', amount: num(r.assinaturas)! })
+
+  for (const d of despesas) {
+    await supabase.from('recurring_expenses').insert({
+      user_id: userId,
+      description: d.description,
+      category: d.category,
+      amount: d.amount,
+      due_day: 10,
+      active: true,
+    })
+  }
+}
+
 export function useDiagnostico() {
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -318,8 +383,20 @@ export function useDiagnostico() {
       })
       .select()
       .single()
+
+    if (err) {
+      setSalvando(false)
+      setErro('Não foi possível salvar agora. Tenta de novo em instantes.')
+      return null
+    }
+
+    try {
+      await aplicarDiagnosticoNoDashboard(userId, respostas)
+    } catch {
+      // melhor esforço: o diagnóstico já foi salvo mesmo que essa etapa falhe
+    }
+
     setSalvando(false)
-    if (err) { setErro('Não foi possível salvar agora. Tenta de novo em instantes.'); return null }
     return data
   }
 
