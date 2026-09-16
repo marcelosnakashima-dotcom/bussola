@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Send, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react'
+import { Plus, Pencil, Trash2, Send, Clock, CheckCircle, XCircle, RefreshCw, UserPlus, Copy, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useUserRole } from '@/hooks/useData'
 import { formatDate } from '@/lib/supabase'
@@ -105,7 +105,7 @@ function TemplateForm({
 
 export function AdminPage() {
   const { isAdmin, loading: roleLoading } = useUserRole()
-  const [tab,      setTab]      = useState<'templates' | 'disparos'>('templates')
+  const [tab,      setTab]      = useState<'templates' | 'disparos' | 'clientes'>('templates')
   const [templates, setTemplates] = useState<NotificationTemplate[]>([])
   const [dispatches, setDispatches] = useState<AdminNotification[]>([])
   const [showAddTmpl, setShowAddTmpl] = useState(false)
@@ -114,6 +114,12 @@ export function AdminPage() {
   const [dispatchForm, setDispatchForm] = useState({ templateId: '', titleOverride: '', bodyOverride: '', targetAll: true, sendNow: true, sendAt: '' })
   const [dispatching, setDispatching] = useState(false)
   const [refreshing,  setRefreshing]  = useState(false)
+
+  const [clientForm, setClientForm] = useState({ nome: '', email: '', senhaCustom: '', usarSenhaCustom: false })
+  const [creatingClient, setCreatingClient] = useState(false)
+  const [clientError, setClientError] = useState<string | null>(null)
+  const [clientResult, setClientResult] = useState<{ email: string; senha: string } | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const loadTemplates = async () => {
     const { data } = await supabase.from('notification_templates').select('*').order('created_at')
@@ -183,6 +189,45 @@ export function AdminPage() {
     setRefreshing(false)
   }
 
+  const createClientAccess = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setCreatingClient(true)
+    setClientError(null)
+    setClientResult(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const supaUrl = import.meta.env.VITE_SUPABASE_URL
+      const res = await fetch(`${supaUrl}/functions/v1/create-client-access`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          email: clientForm.email,
+          nome: clientForm.nome || undefined,
+          senha: clientForm.usarSenhaCustom ? clientForm.senhaCustom : undefined,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Erro ao criar acesso.')
+      setClientResult({ email: json.email, senha: json.senha })
+      setClientForm({ nome: '', email: '', senhaCustom: '', usarSenhaCustom: false })
+    } catch (err: any) {
+      setClientError(err.message ?? 'Erro ao criar acesso.')
+    } finally {
+      setCreatingClient(false)
+    }
+  }
+
+  const copyCredentials = () => {
+    if (!clientResult) return
+    navigator.clipboard.writeText(`E-mail: ${clientResult.email}\nSenha: ${clientResult.senha}`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   if (roleLoading) return <div className="p-8 flex justify-center">
     <div className="w-8 h-8 rounded-full border-4 animate-spin" style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }} />
   </div>
@@ -196,12 +241,12 @@ export function AdminPage() {
     <div className="p-4 md:p-8 max-w-screen-xl mx-auto space-y-6">
       <div>
         <h1 className="font-display text-2xl md:text-3xl" style={{ color: 'var(--ink)' }}>Administração</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>Gerencie templates e disparos de notificação.</p>
+        <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>Gerencie templates, disparos de notificação e acessos de clientes.</p>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-2 border-b" style={{ borderColor: 'var(--border)' }}>
-        {(['templates', 'disparos'] as const).map(t => (
+        {(['templates', 'disparos', 'clientes'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors capitalize ${tab === t ? 'border-brand' : 'border-transparent'}`}
             style={{ color: tab === t ? 'var(--brand)' : 'var(--muted)', borderColor: tab === t ? 'var(--brand)' : 'transparent' }}>
@@ -408,6 +453,70 @@ export function AdminPage() {
                 </table>
             }
           </div>
+        </div>
+      )}
+
+      {/* Clientes */}
+      {tab === 'clientes' && (
+        <div className="space-y-4">
+          <div className="rounded-2xl border bg-white p-5 max-w-lg" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="font-medium mb-1 flex items-center gap-2" style={{ color: 'var(--ink)' }}>
+              <UserPlus className="w-4 h-4" /> Criar acesso de cliente
+            </h3>
+            <p className="text-xs mb-4" style={{ color: 'var(--muted)' }}>
+              Cria a conta de login do cliente no Arsen. Por padrão a senha é gerada automaticamente — copie e envie para ele por um canal seguro.
+            </p>
+            <form onSubmit={createClientAccess} className="space-y-3">
+              <div>
+                <label className="text-xs mb-1 block" style={{ color: 'var(--muted)' }}>Nome do cliente</label>
+                <input type="text" value={clientForm.nome} onChange={e => setClientForm({ ...clientForm, nome: e.target.value })}
+                  className="w-full border rounded-xl px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
+              </div>
+              <div>
+                <label className="text-xs mb-1 block" style={{ color: 'var(--muted)' }}>E-mail</label>
+                <input type="email" required value={clientForm.email} onChange={e => setClientForm({ ...clientForm, email: e.target.value })}
+                  className="w-full border rounded-xl px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
+              </div>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={clientForm.usarSenhaCustom}
+                  onChange={e => setClientForm({ ...clientForm, usarSenhaCustom: e.target.checked })}
+                  className="h-4 w-4" />
+                <span style={{ color: 'var(--ink)' }}>Definir senha manualmente</span>
+              </label>
+              {clientForm.usarSenhaCustom && (
+                <div>
+                  <label className="text-xs mb-1 block" style={{ color: 'var(--muted)' }}>Senha (mín. 8 caracteres)</label>
+                  <input type="text" minLength={8} value={clientForm.senhaCustom}
+                    onChange={e => setClientForm({ ...clientForm, senhaCustom: e.target.value })}
+                    className="w-full border rounded-xl px-3 py-2 text-sm font-mono" style={{ borderColor: 'var(--border)' }} />
+                </div>
+              )}
+              {clientError && <p className="text-sm text-red-600">{clientError}</p>}
+              <button type="submit" disabled={creatingClient}
+                className="w-full py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60"
+                style={{ background: 'var(--brand)' }}>
+                {creatingClient ? 'Criando...' : 'Criar acesso'}
+              </button>
+            </form>
+          </div>
+
+          {clientResult && (
+            <div className="rounded-2xl border p-5 max-w-lg" style={{ borderColor: 'var(--brand)', background: '#F0FDF4' }}>
+              <p className="text-sm font-medium mb-3" style={{ color: 'var(--ink)' }}>
+                Acesso criado! Copie e envie ao cliente — a senha não vai aparecer de novo aqui.
+              </p>
+              <div className="space-y-1 font-mono text-sm mb-3" style={{ color: 'var(--ink)' }}>
+                <p>E-mail: {clientResult.email}</p>
+                <p>Senha: {clientResult.senha}</p>
+              </div>
+              <button onClick={copyCredentials}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm border bg-white"
+                style={{ borderColor: 'var(--border)' }}>
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? 'Copiado!' : 'Copiar credenciais'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
