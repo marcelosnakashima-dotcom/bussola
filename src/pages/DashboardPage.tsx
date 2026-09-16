@@ -1,16 +1,26 @@
 import { useState } from 'react'
 import { TrendingUp, TrendingDown, Calendar, Target, ArrowRight, Repeat, X, Pencil, Check } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { useSummary, useCategoryTotals, useAssets, useTransactions, useRecurringExpenses } from '@/hooks/useData'
-import { formatBRL, formatDate } from '@/lib/supabase'
+import { useSummary, useCategoryTotals, useAssets, useDebts, useTransactions, useRecurringExpenses } from '@/hooks/useData'
+import { formatBRL, formatDate, type Debt } from '@/lib/supabase'
 import { DistributionBar } from '@/components/charts/DistributionBar'
 import { SaldoChart, CategoriaChart } from '@/components/charts/AnimatedCharts'
+
+const DEBT_TIPO_LABELS: Record<Debt['tipo'], string> = {
+  financiamento_imovel: 'Financiamento imobiliário',
+  financiamento_veiculo: 'Financiamento de veículo',
+  emprestimo: 'Empréstimo',
+  cartao_credito: 'Cartão de crédito',
+  terceiros: 'Dívida com terceiros',
+  outro: 'Outro',
+}
 
 export function DashboardPage() {
   const [month] = useState<Date>(new Date())
   const { summary, loading: sumLoading } = useSummary(month)
   const categoryTotals = useCategoryTotals(month)
   const { assets, total: patrimonioTotal, loading: assetsLoading } = useAssets()
+  const { debts, total: dividasTotal, loading: debtsLoading } = useDebts()
   const { transactions, loading: txLoading } = useTransactions(month)
   const { expenses: recurringExpenses, loading: recurringLoading, deactivate: deactivateRecurring, update: updateRecurring } = useRecurringExpenses()
 
@@ -325,6 +335,37 @@ export function DashboardPage() {
                 <p className="text-sm font-medium truncate" style={{ color: 'var(--ink)' }}>{a.nome}</p>
                 <p className="font-display text-base mt-1" style={{ color: 'var(--ink)' }}>
                   {formatBRL(a.valor)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Debts preview */}
+      {!debtsLoading && debts.length > 0 && (
+        <div className="rounded-2xl border bg-white" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: 'var(--border)' }}>
+            <div>
+              <h3 className="font-display text-lg" style={{ color: 'var(--ink)' }}>Dívidas e financiamentos</h3>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+                Total em aberto: <span style={{ color: '#DC2626' }}>{formatBRL(dividasTotal)}</span>
+              </p>
+            </div>
+            <Link to="/dividas" className="text-sm flex items-center gap-1 hover:underline"
+              style={{ color: 'var(--brand)' }}>
+              Ver todas <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-5">
+            {debts.slice(0, 4).map(d => (
+              <div key={d.id} className="rounded-xl border p-4" style={{ borderColor: 'var(--border)' }}>
+                <p className="text-[10px] font-mono uppercase tracking-wider mb-1" style={{ color: 'var(--muted)' }}>
+                  {DEBT_TIPO_LABELS[d.tipo] ?? d.tipo}
+                </p>
+                <p className="text-sm font-medium truncate" style={{ color: 'var(--ink)' }}>{d.nome}</p>
+                <p className="font-display text-base mt-1" style={{ color: '#DC2626' }}>
+                  {formatBRL(d.valor)}
                 </p>
               </div>
             ))}
