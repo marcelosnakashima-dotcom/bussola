@@ -45,6 +45,17 @@ export interface Asset {
   updated_at: string
 }
 
+export interface Debt {
+  id: string
+  user_id: string
+  tipo: 'financiamento_imovel' | 'financiamento_veiculo' | 'emprestimo' | 'cartao_credito' | 'terceiros' | 'outro'
+  nome: string
+  valor: number
+  detalhe?: string
+  created_at: string
+  updated_at: string
+}
+
 export interface UserPlan {
   user_id: string
   necessidade: number
