@@ -1,4 +1,5 @@
 
+
 import { useState } from 'react'
 import { ArrowRight, Plus, Trash2, RotateCcw } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
@@ -9,7 +10,7 @@ import { useDiagnostico } from '@/hooks/useData'
 // ─── Tipos ─────────────────────────────────────────────────────────────
 type FieldType =
   | 'text' | 'textarea' | 'number' | 'currency'
-  | 'boolean' | 'radio' | 'checkbox' | 'dependents'
+  | 'boolean' | 'radio' | 'checkbox' | 'dependents' | 'consent'
 
 interface FieldOption { value: string; desc?: string | null }
 
@@ -206,6 +207,21 @@ function buildSteps(): Step[] {
       { key: 'email', label: 'E-mail', type: 'text', placeholder: 'voce@email.com' },
     ],
   })
+  steps.push({
+    type: 'question',
+    id: 'termo',
+    sectionId: 'termo',
+    title: 'Antes de concluir',
+    subtitle: 'Confirme para finalizar o seu diagnóstico.',
+    fields: [
+      {
+        key: 'termoAceite',
+        type: 'consent',
+        required: true,
+        label: 'Declaro que as informações preenchidas neste formulário são verdadeiras e completas, e me responsabilizo integralmente pela exatidão dos dados fornecidos.',
+      },
+    ],
+  })
   steps.push({ type: 'summary', id: 'summary' })
   return steps
 }
@@ -254,6 +270,7 @@ export function DiagnosticoPage() {
   const requiredFields = current.type === 'question' ? current.fields.filter(f => f.required) : []
   const canContinue = requiredFields.every(f => {
     const v = answers[f.key]
+    if (f.type === 'consent') return v === true
     return v !== undefined && v !== null && String(v).trim() !== ''
   })
 
@@ -470,6 +487,21 @@ export function DiagnosticoPage() {
       )
     }
 
+    if (field.type === 'consent') {
+      const checked = answers[field.key] === true
+      return (
+        <div key={field.key}>
+          <label className="flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-colors"
+            style={{ borderColor: checked ? 'var(--brand)' : 'var(--border)', background: checked ? '#F0F7F3' : 'white' }}>
+            <input type="checkbox" checked={checked}
+              onChange={e => updateAnswer(field.key, e.target.checked)}
+              className="mt-0.5 w-4 h-4 flex-shrink-0" />
+            <span className="text-sm" style={{ color: 'var(--ink)' }}>{field.label}</span>
+          </label>
+        </div>
+      )
+    }
+
     return null
   }
 
@@ -540,7 +572,13 @@ export function DiagnosticoPage() {
               </button>
               <button onClick={goBack} className="text-sm" style={{ color: 'var(--muted)' }}>Voltar</button>
             </div>
-            {!canContinue && <p className="text-xs" style={{ color: 'var(--muted)' }}>Preencha este campo para continuar.</p>}
+            {!canContinue && (
+              <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                {current.fields.some(f => f.required && f.type === 'consent')
+                  ? 'Marque a caixa acima para continuar.'
+                  : 'Preencha este campo para continuar.'}
+              </p>
+            )}
           </>
         )}
 
@@ -606,6 +644,15 @@ export function DiagnosticoPage() {
                       <span className="font-mono text-right" style={{ color: 'var(--ink)' }}>{answers.email}</span>
                     </div>
                   )}
+                </div>
+              )}
+              {answers.termoAceite === true && (
+                <div className="py-3">
+                  <p className="text-xs font-medium uppercase tracking-wide mb-2" style={{ color: 'var(--brand)' }}>Termo de responsabilidade</p>
+                  <div className="flex justify-between gap-4 text-sm py-1">
+                    <span style={{ color: 'var(--muted)' }}>Aceito pelo cliente</span>
+                    <span className="font-mono text-right" style={{ color: 'var(--ink)' }}>Sim</span>
+                  </div>
                 </div>
               )}
             </div>
