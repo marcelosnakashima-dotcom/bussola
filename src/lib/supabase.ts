@@ -20,9 +20,24 @@ export interface Category {
   padrao: boolean
 }
 
+// Grupo familiar: uma conta compartilhada por mais de um login (ex: casal).
+export interface Household {
+  id: string
+  nome: string | null
+  created_at: string
+}
+
+export interface HouseholdMember {
+  id: string
+  household_id: string
+  user_id: string
+  created_at: string
+}
+
 export interface Transaction {
   id: string
   user_id: string
+  household_id: string
   data: string
   descricao: string
   categoria_id: string | null
@@ -37,6 +52,7 @@ export interface Transaction {
 export interface Asset {
   id: string
   user_id: string
+  household_id: string
   tipo: 'reserva' | 'consorcio' | 'previdencia' | 'seguro' | 'investimento' | 'imovel' | 'outro'
   nome: string
   valor: number
@@ -48,6 +64,7 @@ export interface Asset {
 export interface Debt {
   id: string
   user_id: string
+  household_id: string
   tipo: 'financiamento_imovel' | 'financiamento_veiculo' | 'emprestimo' | 'cartao_credito' | 'terceiros' | 'outro'
   nome: string
   valor: number
@@ -57,7 +74,8 @@ export interface Debt {
 }
 
 export interface UserPlan {
-  user_id: string
+  household_id: string
+  user_id?: string
   necessidade: number
   desejo: number
   poupanca: number
@@ -114,6 +132,7 @@ export interface AdminNotification {
 export interface RecurringExpense {
   id: string
   user_id: string
+  household_id: string
   description: string
   category: string | null
   amount: number
@@ -125,6 +144,7 @@ export interface RecurringExpense {
 export interface Diagnostico {
   id: string
   user_id: string
+  household_id: string
   nome_cliente: string | null
   telefone: string | null
   email: string | null
