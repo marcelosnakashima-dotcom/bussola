@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Send, Clock, CheckCircle, XCircle, RefreshCw, UserPlus, Copy, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -115,10 +116,10 @@ export function AdminPage() {
   const [dispatching, setDispatching] = useState(false)
   const [refreshing,  setRefreshing]  = useState(false)
 
-  const [clientForm, setClientForm] = useState({ nome: '', email: '', senhaCustom: '', usarSenhaCustom: false })
+  const [clientForm, setClientForm] = useState({ nome: '', email: '', senhaCustom: '', usarSenhaCustom: false, vincular: false, vincularEmail: '' })
   const [creatingClient, setCreatingClient] = useState(false)
   const [clientError, setClientError] = useState<string | null>(null)
-  const [clientResult, setClientResult] = useState<{ email: string; senha: string } | null>(null)
+  const [clientResult, setClientResult] = useState<{ email: string; senha: string; vinculado: boolean } | null>(null)
   const [copied, setCopied] = useState(false)
 
   const loadTemplates = async () => {
@@ -208,12 +209,13 @@ export function AdminPage() {
           email: clientForm.email,
           nome: clientForm.nome || undefined,
           senha: clientForm.usarSenhaCustom ? clientForm.senhaCustom : undefined,
+          vincular_email: clientForm.vincular ? clientForm.vincularEmail : undefined,
         }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? 'Erro ao criar acesso.')
-      setClientResult({ email: json.email, senha: json.senha })
-      setClientForm({ nome: '', email: '', senhaCustom: '', usarSenhaCustom: false })
+      setClientResult({ email: json.email, senha: json.senha, vinculado: Boolean(json.vinculado) })
+      setClientForm({ nome: '', email: '', senhaCustom: '', usarSenhaCustom: false, vincular: false, vincularEmail: '' })
     } catch (err: any) {
       setClientError(err.message ?? 'Erro ao criar acesso.')
     } finally {
@@ -491,10 +493,29 @@ export function AdminPage() {
                     className="w-full border rounded-xl px-3 py-2 text-sm font-mono" style={{ borderColor: 'var(--border)' }} />
                 </div>
               )}
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={clientForm.vincular}
+                  onChange={e => setClientForm({ ...clientForm, vincular: e.target.checked })}
+                  className="h-4 w-4" />
+                <span style={{ color: 'var(--ink)' }}>Vincular ao grupo familiar de um cliente já existente</span>
+              </label>
+              {clientForm.vincular && (
+                <div>
+                  <label className="text-xs mb-1 block" style={{ color: 'var(--muted)' }}>
+                    E-mail do cliente já cadastrado (ex: cônjuge)
+                  </label>
+                  <input type="email" value={clientForm.vincularEmail}
+                    onChange={e => setClientForm({ ...clientForm, vincularEmail: e.target.value })}
+                    className="w-full border rounded-xl px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
+                  <p className="text-[11px] mt-1" style={{ color: 'var(--muted)' }}>
+                    Diagnóstico, ativos, dívidas, despesas e o plano 50/30/20 passam a ser compartilhados entre as duas contas.
+                  </p>
+                </div>
+              )}
               {clientError && <p className="text-sm text-red-600">{clientError}</p>}
               <button type="submit" disabled={creatingClient}
                 className="w-full py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60"
-                style={{ background: 'var(--brand)' }}>
+                                style={{ background: 'var(--brand)' }}>
                 {creatingClient ? 'Criando...' : 'Criar acesso'}
               </button>
             </form>
@@ -505,6 +526,11 @@ export function AdminPage() {
               <p className="text-sm font-medium mb-3" style={{ color: 'var(--ink)' }}>
                 Acesso criado! Copie e envie ao cliente — a senha não vai aparecer de novo aqui.
               </p>
+              {clientResult.vinculado && (
+                <p className="text-xs mb-3" style={{ color: 'var(--brand)' }}>
+                  Vinculado ao mesmo grupo familiar do cliente informado — os dados ficam compartilhados entre as duas contas.
+                </p>
+              )}
               <div className="space-y-1 font-mono text-sm mb-3" style={{ color: 'var(--ink)' }}>
                 <p>E-mail: {clientResult.email}</p>
                 <p>Senha: {clientResult.senha}</p>
