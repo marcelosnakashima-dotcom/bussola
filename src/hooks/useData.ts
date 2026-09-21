@@ -1,11 +1,30 @@
 import { useEffect, useState, useCallback } from 'react'
-import { supabase, type Category, type Transaction, type Asset, type Debt, type UserPlan, type NotificationSettings, type RecurringExpense } from '@/lib/supabase'
+import { supabase, type Category, type Transaction, type Asset, type Debt, type UserPlan, type NotificationSettings, type RecurringExpense, type HouseholdMember } from '@/lib/supabase'
 import { startOfMonth, endOfMonth, format } from 'date-fns'
 
-// ─── Auth helper ─────────────────────────────────────────
+// ─── Auth / household helpers ─────────────────────────────────────
 async function uid() {
   const { data } = await supabase.auth.getUser()
   return data.user?.id ?? null
+}
+
+// Grupo familiar do usuario logado. Todos os dados financeiros (ativos,
+// dividas, despesas recorrentes, plano 50/30/20, diagnostico e transacoes)
+// sao compartilhados entre todos os logins que pertencem ao mesmo household
+// — por exemplo, um casal onde cada um tem seu proprio e-mail/senha.
+let _householdId: string | null | undefined = undefined
+
+async function myHouseholdId() {
+  if (_householdId !== undefined) return _householdId
+  const userId = await uid()
+  if (!userId) return null
+  const { data } = await supabase
+    .from('household_members')
+    .select('household_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+  _householdId = data?.household_id ?? null
+  return _householdId
 }
 
 // ─── Categories (static, cached globally) ──────────────────────
@@ -28,6 +47,36 @@ export function useCategories() {
   return { categories, loading, byId }
 }
 
+// ─── Household (grupo familiar) ───────────────────────────────────────────
+// Lista quem mais compartilha os dados com o usuario logado (por exemplo,
+// o outro login de um casal). Util para mostrar no Perfil.
+export function useHouseholdMembers() {
+  const [members, setMembers] = useState<{ id: string; email: string | null; isMe: boolean }[]>([])
+  const [loading, setLoading]   = useState(true)
+
+  useEffect(() => {
+    (async () => {
+      const userId = await uid()
+      const householdId = await myHouseholdId()
+      if (!userId || !householdId) { setLoading(false); return }
+      const { data } = await supabase
+        .from('household_members')
+        .select('user_id')
+        .eq('household_id', householdId)
+      const { data: userData } = await supabase.auth.getUser()
+      const list = (data ?? []).map((m: Pick<HouseholdMember, 'user_id'>) => ({
+        id: m.user_id,
+        email: m.user_id === userId ? (userData.user?.email ?? null) : null,
+        isMe: m.user_id === userId,
+      }))
+      setMembers(list)
+      setLoading(false)
+    })()
+  }, [])
+
+  return { members, loading }
+}
+
 // ─── Transactions ────────────────────────────────────────────
 export function useTransactions(month?: Date) {
   const ref   = month ?? new Date()
@@ -40,13 +89,13 @@ export function useTransactions(month?: Date) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const userId = await uid()
-    if (!userId) { setLoading(false); return }
+    const householdId = await myHouseholdId()
+    if (!householdId) { setLoading(false); return }
 
     const { data, error: err } = await supabase
       .from('transactions')
       .select('*')
-      .eq('user_id', userId)
+      .eq('household_id', householdId)
       .gte('data', from)
       .lte('data', to)
       .order('data', { ascending: false })
@@ -58,12 +107,13 @@ export function useTransactions(month?: Date) {
 
   useEffect(() => { load() }, [load])
 
-  const addTransaction = async (t: Omit<Transaction, 'id' | 'user_id' | 'created_at'>) => {
+  const addTransaction = async (t: Omit<Transaction, 'id' | 'user_id' | 'household_id' | 'created_at'>) => {
     const userId = await uid()
-    if (!userId) return null
+    const householdId = await myHouseholdId()
+    if (!userId || !householdId) return null
     const { data, error: err } = await supabase
       .from('transactions')
-      .insert({ ...t, user_id: userId })
+      .insert({ ...t, user_id: userId, household_id: householdId })
       .select()
       .single()
     if (err) return null
@@ -76,12 +126,13 @@ export function useTransactions(month?: Date) {
     await load()
   }
 
-  const bulkInsert = async (items: Omit<Transaction, 'id' | 'user_id' | 'created_at'>[]) => {
+  const bulkInsert = async (items: Omit<Transaction, 'id' | 'user_id' | 'household_id' | 'created_at'>[]) => {
     const userId = await uid()
-    if (!userId) throw new Error('Not authenticated')
+    const householdId = await myHouseholdId()
+    if (!userId || !householdId) throw new Error('Not authenticated')
     const { error: err } = await supabase
       .from('transactions')
-      .insert(items.map(t => ({ ...t, user_id: userId })))
+      .insert(items.map(t => ({ ...t, user_id: userId, household_id: householdId })))
     if (err) throw err
     await load()
   }
@@ -149,12 +200,12 @@ export function useAssets() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const userId = await uid()
-    if (!userId) { setLoading(false); return }
+    const householdId = await myHouseholdId()
+    if (!householdId) { setLoading(false); return }
     const { data } = await supabase
       .from('assets')
       .select('*')
-      .eq('user_id', userId)
+      .eq('household_id', householdId)
       .order('created_at')
     setAssets(data ?? [])
     setLoading(false)
@@ -162,14 +213,15 @@ export function useAssets() {
 
   useEffect(() => { load() }, [load])
 
-  const addAsset = async (a: Omit<Asset, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  const addAsset = async (a: Omit<Asset, 'id' | 'user_id' | 'household_id' | 'created_at' | 'updated_at'>) => {
     const userId = await uid()
-    if (!userId) return
-    await supabase.from('assets').insert({ ...a, user_id: userId })
+    const householdId = await myHouseholdId()
+    if (!userId || !householdId) return
+    await supabase.from('assets').insert({ ...a, user_id: userId, household_id: householdId })
     await load()
   }
 
-  const updateAsset = async (id: string, a: Partial<Omit<Asset, 'id' | 'user_id'>>) => {
+  const updateAsset = async (id: string, a: Partial<Omit<Asset, 'id' | 'user_id' | 'household_id'>>) => {
     await supabase.from('assets').update(a).eq('id', id)
     await load()
   }
@@ -190,12 +242,12 @@ export function useDebts() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const userId = await uid()
-    if (!userId) { setLoading(false); return }
+    const householdId = await myHouseholdId()
+    if (!householdId) { setLoading(false); return }
     const { data } = await supabase
       .from('debts')
       .select('*')
-      .eq('user_id', userId)
+      .eq('household_id', householdId)
       .order('created_at')
     setDebts(data ?? [])
     setLoading(false)
@@ -203,14 +255,15 @@ export function useDebts() {
 
   useEffect(() => { load() }, [load])
 
-  const addDebt = async (d: Omit<Debt, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  const addDebt = async (d: Omit<Debt, 'id' | 'user_id' | 'household_id' | 'created_at' | 'updated_at'>) => {
     const userId = await uid()
-    if (!userId) return
-    await supabase.from('debts').insert({ ...d, user_id: userId })
+    const householdId = await myHouseholdId()
+    if (!userId || !householdId) return
+    await supabase.from('debts').insert({ ...d, user_id: userId, household_id: householdId })
     await load()
   }
 
-  const updateDebt = async (id: string, d: Partial<Omit<Debt, 'id' | 'user_id'>>) => {
+  const updateDebt = async (id: string, d: Partial<Omit<Debt, 'id' | 'user_id' | 'household_id'>>) => {
     await supabase.from('debts').update(d).eq('id', id)
     await load()
   }
@@ -231,12 +284,12 @@ export function useRecurringExpenses() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const userId = await uid()
-    if (!userId) { setLoading(false); return }
+    const householdId = await myHouseholdId()
+    if (!householdId) { setLoading(false); return }
     const { data } = await supabase
       .from('recurring_expenses')
       .select('*')
-      .eq('user_id', userId)
+      .eq('household_id', householdId)
       .eq('active', true)
       .order('due_day', { ascending: true })
     setExpenses(data ?? [])
@@ -259,20 +312,20 @@ export function useRecurringExpenses() {
 }
 
 // ─── Plan ───────────────────────────────────────────────────
-const DEFAULT_PLAN: Omit<UserPlan, 'user_id' | 'updated_at'> = {
+const DEFAULT_PLAN: Omit<UserPlan, 'household_id' | 'user_id' | 'updated_at'> = {
   necessidade: 0.5, desejo: 0.3, poupanca: 0.2
 }
 
 export function usePlan() {
-  const [plan,    setPlan]    = useState<Omit<UserPlan, 'user_id' | 'updated_at'>>(DEFAULT_PLAN)
+  const [plan,    setPlan]    = useState<Omit<UserPlan, 'household_id' | 'user_id' | 'updated_at'>>(DEFAULT_PLAN)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     (async () => {
-      const userId = await uid()
-      if (!userId) { setLoading(false); return }
+      const householdId = await myHouseholdId()
+      if (!householdId) { setLoading(false); return }
       const { data } = await supabase
-        .from('user_plan').select('*').eq('user_id', userId).maybeSingle()
+        .from('user_plan').select('*').eq('household_id', householdId).maybeSingle()
       if (data) setPlan({ necessidade: Number(data.necessidade), desejo: Number(data.desejo), poupanca: Number(data.poupanca), renda_base: data.renda_base ? Number(data.renda_base) : undefined })
       setLoading(false)
     })()
@@ -280,15 +333,16 @@ export function usePlan() {
 
   const savePlan = async (p: typeof DEFAULT_PLAN) => {
     const userId = await uid()
-    if (!userId) return
-    await supabase.from('user_plan').upsert({ user_id: userId, ...p })
+    const householdId = await myHouseholdId()
+    if (!userId || !householdId) return
+    await supabase.from('user_plan').upsert({ household_id: householdId, user_id: userId, ...p })
     setPlan(p)
   }
 
   return { plan, loading, savePlan }
 }
 
-// ─── Notification settings ──────────────────────────────────────
+// ─── Notification settings (pessoal, nao compartilhado) ────────────────────────
 export function useNotificationSettings() {
   const [settings, setSettings] = useState<NotificationSettings | null>(null)
   const [loading,  setLoading]  = useState(true)
@@ -340,17 +394,20 @@ export function useUserRole() {
 // ─── Diagnóstico financeiro ──────────────────────────────────────
 // Depois de salvar o diagnóstico, traduz automaticamente as respostas em
 // registros reais do dashboard (renda base, ativos, dívidas e despesas
-// recorrentes). Roda em "melhor esforço": se essa etapa falhar, o
-// diagnóstico em si já foi salvo e não é desfeito.
-async function aplicarDiagnosticoNoDashboard(userId: string, r: Record<string, any>) {
+// recorrentes) — todos vinculados ao household, e portanto visíveis para
+// qualquer outro login que compartilhe a mesma conta. Roda em "melhor
+// esforço": se essa etapa falhar, o diagnóstico em si já foi salvo e não
+// é desfeito.
+async function aplicarDiagnosticoNoDashboard(householdId: string, userId: string, r: Record<string, any>) {
   const num = (v: any): number | null => (typeof v === 'number' && v > 0 ? v : null)
 
   // 1. Renda informada vira a base do plano 50/30/20
   const renda = (num(r.rendaFixa) ?? 0) + (num(r.rendaVariavel) ?? 0) + (num(r.outrasRendas) ?? 0)
   if (renda > 0) {
     const { data: planoAtual } = await supabase
-      .from('user_plan').select('necessidade, desejo, poupanca').eq('user_id', userId).maybeSingle()
+      .from('user_plan').select('necessidade, desejo, poupanca').eq('household_id', householdId).maybeSingle()
     await supabase.from('user_plan').upsert({
+      household_id: householdId,
       user_id: userId,
       necessidade: planoAtual?.necessidade ?? 0.5,
       desejo: planoAtual?.desejo ?? 0.3,
@@ -374,6 +431,7 @@ async function aplicarDiagnosticoNoDashboard(userId: string, r: Record<string, a
 
   for (const a of ativos) {
     await supabase.from('assets').insert({
+      household_id: householdId,
       user_id: userId,
       tipo: a.tipo,
       nome: a.nome,
@@ -392,6 +450,7 @@ async function aplicarDiagnosticoNoDashboard(userId: string, r: Record<string, a
 
   for (const d of dividas) {
     await supabase.from('debts').insert({
+      household_id: householdId,
       user_id: userId,
       tipo: d.tipo,
       nome: d.nome,
@@ -412,6 +471,7 @@ async function aplicarDiagnosticoNoDashboard(userId: string, r: Record<string, a
 
   for (const d of despesas) {
     await supabase.from('recurring_expenses').insert({
+      household_id: householdId,
       user_id: userId,
       description: d.description,
       category: d.category,
@@ -430,7 +490,8 @@ export function useDiagnostico() {
     setSalvando(true)
     setErro(null)
     const userId = await uid()
-    if (!userId) {
+    const householdId = await myHouseholdId()
+    if (!userId || !householdId) {
       setSalvando(false)
       setErro('Você precisa estar logado para salvar o diagnóstico.')
       return null
@@ -440,6 +501,7 @@ export function useDiagnostico() {
       .from('diagnosticos')
       .insert({
         user_id: userId,
+        household_id: householdId,
         nome_cliente: respostas.nomeCompleto ?? null,
         telefone: respostas.telefone ?? null,
         email: respostas.email ?? null,
@@ -458,7 +520,7 @@ export function useDiagnostico() {
     }
 
     try {
-      await aplicarDiagnosticoNoDashboard(userId, respostas)
+      await aplicarDiagnosticoNoDashboard(householdId, userId, respostas)
     } catch {
       // melhor esforço: o diagnóstico já foi salvo mesmo que essa etapa falhe
     }
