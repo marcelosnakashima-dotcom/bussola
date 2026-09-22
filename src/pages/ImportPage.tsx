@@ -13,7 +13,7 @@ interface ImportItem {
   tipo: 'despesa' | 'receita'
   categoriaId: string | null
   categoriaNome: string | null
-  categoriaNomeOriginal: string | null  // categoria original do Claude
+  categoriaNomeOriginal: string | null  // categoria original sugerida pela IA
   categoriaIdOriginal: string | null
   confianca: 'alta' | 'media' | 'revisar'
   justificativa: string
@@ -136,7 +136,7 @@ export function ImportPage() {
     }
   }
 
-  // ── Revalidar com Claude usando as correções do usuário
+  // ── Revalidar categorização usando as correções do usuário
   const revalidate = async () => {
     if (!pdfBase64) return
     const corrections = items
@@ -234,7 +234,7 @@ export function ImportPage() {
         </h1>
         <p className="text-sm mt-0.5 flex items-center gap-1.5" style={{ color: 'var(--muted)' }}>
           <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--brand)' }} />
-          Categorização automática com Claude AI · revisão e correção incluídas
+          Categorização automática com IA · revisão e correção incluídas
         </p>
       </div>
 
@@ -274,7 +274,7 @@ export function ImportPage() {
           </p>
           <div className="flex items-center justify-center gap-2 mt-4 text-xs" style={{ color: 'var(--muted)' }}>
             <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--brand)' }} />
-            Claude lê o PDF, extrai e categoriza automaticamente
+            A IA lê o PDF, extrai e categoriza automaticamente
           </div>
           <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={handleFile} />
         </div>
@@ -288,7 +288,7 @@ export function ImportPage() {
               style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }} />
             <Sparkles className="w-6 h-6 absolute inset-0 m-auto" style={{ color: 'var(--brand)' }} />
           </div>
-          <p className="font-medium text-lg" style={{ color: 'var(--ink)' }}>Claude está lendo seu PDF</p>
+          <p className="font-medium text-lg" style={{ color: 'var(--ink)' }}>Lendo seu PDF</p>
           <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
             Extraindo transações e categorizando com inteligência artificial...
           </p>
@@ -318,13 +318,13 @@ export function ImportPage() {
               style={{ background: '#F0FDF4', borderColor: '#86EFAC' }}>
               <p className="text-sm text-green-800">
                 <strong>{corrections.length} correção{corrections.length > 1 ? 'ões' : ''}</strong> feita{corrections.length > 1 ? 's' : ''} por você.
-                Quer que o Claude aprenda e recategorize transações similares?
+                Quer recategorizar transações similares automaticamente?
               </p>
               <button onClick={revalidate} disabled={reloading}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium text-white disabled:opacity-60"
                 style={{ background: 'var(--brand)' }}>
                 <RefreshCw className={`w-3.5 h-3.5 ${reloading ? 'animate-spin' : ''}`} />
-                {reloading ? 'Recategorizando...' : 'Revalidar com Claude'}
+                {reloading ? 'Recategorizando...' : 'Revalidar categorização'}
               </button>
             </div>
           )}
@@ -334,7 +334,7 @@ export function ImportPage() {
               <AlertCircle className="w-12 h-12 mx-auto mb-3 text-amber-500" />
               <p className="font-medium mb-2" style={{ color: 'var(--ink)' }}>Nenhuma transação encontrada</p>
               <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
-                O Claude não conseguiu extrair dados deste PDF. Verifique se é um extrato ou fatura válida.
+                Não foi possível extrair dados deste PDF. Verifique se é um extrato ou fatura válida.
               </p>
               <button onClick={reset} className="px-5 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: 'var(--brand)' }}>
                 Tentar outro arquivo
@@ -424,7 +424,7 @@ export function ImportPage() {
                             <tr key={`${item.id}-just`}>
                               <td colSpan={7} className="px-5 py-2 text-xs italic border-b"
                                 style={{ background: '#FFFBEB', color: '#78350F', borderColor: 'var(--border)' }}>
-                                💡 <strong>Claude:</strong> {item.justificativa}
+                                💡 <strong>Justificativa:</strong> {item.justificativa}
                               </td>
                             </tr>
                           )}
@@ -476,7 +476,7 @@ export function ImportPage() {
           </p>
           {corrections.length > 0 && (
             <p className="text-sm mb-6" style={{ color: 'var(--brand)' }}>
-              ✓ {corrections.length} correção{corrections.length > 1 ? 'ões' : ''} registrada{corrections.length > 1 ? 's' : ''} — Claude aprenderá com elas nas próximas importações.
+              ✓ {corrections.length} correção{corrections.length > 1 ? 'ões' : ''} registrada{corrections.length > 1 ? 's' : ''} — isso vai melhorar as próximas importações.
             </p>
           )}
           <button onClick={reset} className="px-6 py-2.5 rounded-xl text-sm font-medium text-white"
