@@ -13,7 +13,7 @@ interface ImportItem {
   tipo: 'despesa' | 'receita'
   categoriaId: string | null
   categoriaNome: string | null
-  categoriaNomeOriginal: string | null  // categoria original sugerida pela IA
+  categoriaNomeOriginal: string | null  // categoria original sugerida
   categoriaIdOriginal: string | null
   confianca: 'alta' | 'media' | 'revisar'
   justificativa: string
@@ -234,7 +234,7 @@ export function ImportPage() {
         </h1>
         <p className="text-sm mt-0.5 flex items-center gap-1.5" style={{ color: 'var(--muted)' }}>
           <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--brand)' }} />
-          Categorização automática com IA · revisão e correção incluídas
+          Categorização automática · revisão e correção incluídas
         </p>
       </div>
 
@@ -274,7 +274,7 @@ export function ImportPage() {
           </p>
           <div className="flex items-center justify-center gap-2 mt-4 text-xs" style={{ color: 'var(--muted)' }}>
             <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--brand)' }} />
-            A IA lê o PDF, extrai e categoriza automaticamente
+            O PDF é lido, extraído e categorizado automaticamente
           </div>
           <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={handleFile} />
         </div>
@@ -290,7 +290,7 @@ export function ImportPage() {
           </div>
           <p className="font-medium text-lg" style={{ color: 'var(--ink)' }}>Lendo seu PDF</p>
           <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
-            Extraindo transações e categorizando com inteligência artificial...
+            Extraindo transações e categorizando automaticamente...
           </p>
         </div>
       )}
@@ -355,7 +355,7 @@ export function ImportPage() {
                       </th>
                       <th className="px-3 py-3 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>DESCRIÇÃO</th>
                       <th className="px-3 py-3 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>DATA</th>
-                      <th className="px-3 py-3 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>IA</th>
+                      <th className="px-3 py-3 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>CONFIANÇA</th>
                       <th className="px-3 py-3 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>CATEGORIA</th>
                       <th className="px-3 py-3 text-right text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>VALOR</th>
                       <th className="w-10" />
