@@ -72,7 +72,6 @@ export function ImportPage() {
       headers: {
         'Content-Type':  'application/json',
         'Authorization': `Bearer ${accessToken}`,
-        'apikey':         supaAnon,
       },
       body: JSON.stringify({
         pdf_base64:     base64,
