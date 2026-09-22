@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { Upload, CheckCircle, AlertCircle, X, RefreshCw, Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
 import { useTransactions, useCategories } from '@/hooks/useData'
-import { formatBRL, formatDate } from '@/lib/supabase'
+import { formatBRL, formatDate, supabase } from '@/lib/supabase'
 
 type Step = 1 | 2 | 3 | 4
 
@@ -64,9 +64,16 @@ export function ImportPage() {
     isRevalidation = false
   ) => {
     const supaUrl = import.meta.env.VITE_SUPABASE_URL
+    const supaAnon = import.meta.env.VITE_SUPABASE_ANON_KEY
+    const { data: sessionData } = await supabase.auth.getSession()
+    const accessToken = sessionData.session?.access_token ?? supaAnon
     const resp = await fetch(`${supaUrl}/functions/v1/parse-pdf`, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+        'apikey':         supaAnon,
+      },
       body: JSON.stringify({
         pdf_base64:     base64,
         corrections,
