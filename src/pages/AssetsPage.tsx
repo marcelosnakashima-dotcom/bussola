@@ -12,7 +12,7 @@ function AssetForm({
   initial, onSave, onCancel
 }: {
   initial?: Partial<Asset>
-  onSave: (a: Omit<Asset, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>
+    onSave: (a: Omit<Asset, 'id' | 'user_id' | 'household_id' | 'created_at' | 'updated_at'>) => Promise<void>
   onCancel: () => void
 }) {
   const [tipo,    setTipo]    = useState<Asset['tipo']>(initial?.tipo ?? 'investimento')
