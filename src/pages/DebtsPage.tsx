@@ -16,7 +16,7 @@ function DebtForm({
   initial, onSave, onCancel
 }: {
   initial?: Partial<Debt>
-  onSave: (d: Omit<Debt, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>
+    onSave: (d: Omit<Debt, 'id' | 'user_id' | 'household_id' | 'created_at' | 'updated_at'>) => Promise<void>
   onCancel: () => void
 }) {
   const [tipo,    setTipo]    = useState<Debt['tipo']>(initial?.tipo ?? 'emprestimo')
