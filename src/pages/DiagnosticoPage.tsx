@@ -1,5 +1,4 @@
 
-
 import { useState } from 'react'
 import { ArrowRight, Plus, Trash2, RotateCcw } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
@@ -261,6 +260,24 @@ export function DiagnosticoPage() {
   const progressPct = Math.round((step / (STEPS.length - 1)) * 100)
 
   const updateAnswer = (key: string, value: any) => setAnswers(prev => ({ ...prev, [key]: value }))
+
+  // Quando a resposta de um campo muda, limpa quaisquer campos-filho (showIf)
+  // cuja condição deixou de ser satisfeita — evita que valores antigos
+  // (ex: "Qual o capital segurado?") fiquem "fantasmas" no resumo/salvamento
+  // depois que a pessoa muda a resposta para "Não".
+  const updateAnswerAndClearDependents = (key: string, value: any) => {
+    const currentStep = current
+    const dependentKeys = currentStep.type === 'question'
+      ? currentStep.fields
+          .filter(f => f.showIf && f.showIf.key === key && f.showIf.equals !== value)
+          .map(f => f.key)
+      : []
+    setAnswers(prev => {
+      const next = { ...prev, [key]: value }
+      dependentKeys.forEach(k => { delete next[k] })
+      return next
+    })
+  }
   const clearAnswer = (key: string) => setAnswers(prev => {
     const next = { ...prev }
     delete next[key]
@@ -382,7 +399,7 @@ export function DiagnosticoPage() {
             {[true, false].map(v => {
               const selected = answers[field.key] === v
               return (
-                <button key={String(v)} type="button" onClick={() => updateAnswer(field.key, v)}
+                <button key={String(v)} type="button" onClick={() => updateAnswerAndClearDependents(field.key, v)}
                   className="py-2.5 rounded-xl border text-sm font-medium transition-colors"
                   style={{
                     borderColor: selected ? 'var(--brand)' : 'var(--border)',
@@ -610,6 +627,7 @@ export function DiagnosticoPage() {
                 const items: { label: string; value: string }[] = []
                 questions.forEach(q => {
                   q.fields.forEach(f => {
+                    if (f.showIf && answers[f.showIf.key] !== f.showIf.equals) return
                     const val = formatAnswerForDisplay(f, answers[f.key])
                     if (val) items.push({ label: f.label || q.title, value: val })
                   })
