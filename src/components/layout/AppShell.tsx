@@ -5,6 +5,7 @@ import {
   ShieldCheck, LogOut, Calculator, User, ClipboardList
 } from 'lucide-react'
 import { ArsenLogo } from '@/components/ArsenLogo'
+import { ToastContainer } from '@/components/Toast'
 import { useAuth } from '@/lib/auth'
 import { useUserRole } from '@/hooks/useData'
 
@@ -137,6 +138,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </ul>
       </nav>
+
+      <ToastContainer />
     </div>
   )
 }
