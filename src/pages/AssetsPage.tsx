@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus, Pencil, Trash2, Wallet } from 'lucide-react'
 import { useAssets } from '@/hooks/useData'
+import { showToast } from '@/components/Toast'
 import { formatBRL, type Asset } from '@/lib/supabase'
 
 const TIPO_LABELS: Record<Asset['tipo'], string> = {
@@ -113,7 +114,15 @@ export function AssetsPage() {
         <div className="rounded-2xl border bg-white p-5" style={{ borderColor: 'var(--border)' }}>
           <h3 className="font-medium mb-4" style={{ color: 'var(--ink)' }}>Novo ativo</h3>
           <AssetForm
-            onSave={async a => { await addAsset(a); setShowAdd(false) }}
+            onSave={async a => {
+              try {
+                await addAsset(a)
+                setShowAdd(false)
+                showToast('Ativo cadastrado com sucesso!')
+              } catch {
+                showToast('Erro ao cadastrar o ativo. Tente novamente.', 'error')
+              }
+            }}
             onCancel={() => setShowAdd(false)}
           />
         </div>
@@ -147,7 +156,15 @@ export function AssetsPage() {
                   ? <div className="rounded-2xl border bg-white p-4 col-span-2" style={{ borderColor: 'var(--border)' }}>
                       <AssetForm
                         initial={a}
-                        onSave={async upd => { await updateAsset(a.id, upd); setEditing(null) }}
+                        onSave={async upd => {
+                          try {
+                            await updateAsset(a.id, upd)
+                            setEditing(null)
+                            showToast('Ativo atualizado com sucesso!')
+                          } catch {
+                            showToast('Erro ao atualizar o ativo. Tente novamente.', 'error')
+                          }
+                        }}
                         onCancel={() => setEditing(null)}
                       />
                     </div>
@@ -160,7 +177,12 @@ export function AssetsPage() {
                         </button>
                         <button onClick={async () => {
                           setDeleting(a.id)
-                          await deleteAsset(a.id)
+                          try {
+                            await deleteAsset(a.id)
+                            showToast('Ativo excluído com sucesso!')
+                          } catch {
+                            showToast('Erro ao excluir o ativo. Tente novamente.', 'error')
+                          }
                           setDeleting(null)
                         }}
                           className="p-1.5 rounded-lg hover:bg-red-50">
