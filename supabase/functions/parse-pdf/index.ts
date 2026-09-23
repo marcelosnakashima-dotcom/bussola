@@ -13,7 +13,10 @@
 import Anthropic from "npm:@anthropic-ai/sdk@0.30.1";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const anthropic   = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
+const anthropic   = new Anthropic({
+  apiKey: Deno.env.get("ANTHROPIC_API_KEY")!,
+  defaultHeaders: { "anthropic-workspace-id": "9dbe3167-9492-4e99-b61f-97b5f8080c44" },
+});
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
