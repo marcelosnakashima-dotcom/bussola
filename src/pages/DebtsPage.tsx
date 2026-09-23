@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus, Pencil, Trash2, CreditCard } from 'lucide-react'
 import { useDebts } from '@/hooks/useData'
+import { showToast } from '@/components/Toast'
 import { formatBRL, type Debt } from '@/lib/supabase'
 
 const TIPO_LABELS: Record<Debt['tipo'], string> = {
@@ -117,7 +118,15 @@ export function DebtsPage() {
         <div className="rounded-2xl border bg-white p-5" style={{ borderColor: 'var(--border)' }}>
           <h3 className="font-medium mb-4" style={{ color: 'var(--ink)' }}>Nova dívida</h3>
           <DebtForm
-            onSave={async d => { await addDebt(d); setShowAdd(false) }}
+            onSave={async d => {
+              try {
+                await addDebt(d)
+                setShowAdd(false)
+                showToast('Dívida cadastrada com sucesso!')
+              } catch {
+                showToast('Erro ao cadastrar a dívida. Tente novamente.', 'error')
+              }
+            }}
             onCancel={() => setShowAdd(false)}
           />
         </div>
@@ -151,7 +160,15 @@ export function DebtsPage() {
                   ? <div className="rounded-2xl border bg-white p-4 col-span-2" style={{ borderColor: 'var(--border)' }}>
                       <DebtForm
                         initial={d}
-                        onSave={async upd => { await updateDebt(d.id, upd); setEditing(null) }}
+                        onSave={async upd => {
+                          try {
+                            await updateDebt(d.id, upd)
+                            setEditing(null)
+                            showToast('Dívida atualizada com sucesso!')
+                          } catch {
+                            showToast('Erro ao atualizar a dívida. Tente novamente.', 'error')
+                          }
+                        }}
                         onCancel={() => setEditing(null)}
                       />
                     </div>
@@ -164,7 +181,12 @@ export function DebtsPage() {
                         </button>
                         <button onClick={async () => {
                           setDeleting(d.id)
-                          await deleteDebt(d.id)
+                          try {
+                            await deleteDebt(d.id)
+                            showToast('Dívida excluída com sucesso!')
+                          } catch {
+                            showToast('Erro ao excluir a dívida. Tente novamente.', 'error')
+                          }
                           setDeleting(null)
                         }}
                           className="p-1.5 rounded-lg hover:bg-red-50">
