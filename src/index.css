@@ -26,3 +26,8 @@ html, body, #root { height: 100%; margin: 0; padding: 0;
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 .font-display { font-family: 'Fraunces', serif; }
 .font-mono    { font-family: 'IBM Plex Mono', monospace; }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
