@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { Upload, CheckCircle, AlertCircle, X, RefreshCw, Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
 import { useTransactions, useCategories } from '@/hooks/useData'
+import { showToast } from '@/components/Toast'
 import { formatBRL, formatDate, supabase } from '@/lib/supabase'
 
 type Step = 1 | 2 | 3 | 4
@@ -214,8 +215,10 @@ export function ImportPage() {
         confianca:   i.confianca,
       })))
       setStep(4)
+      showToast(`${selectedItems.length} despesa${selectedItems.length !== 1 ? 's' : ''} cadastrada${selectedItems.length !== 1 ? 's' : ''} com sucesso!`)
     } catch (err: any) {
       setError(err.message)
+      showToast('Erro ao cadastrar as despesas. Tente novamente.', 'error')
     } finally {
       setLoading(false)
     }
