@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { supabase, type Category, type Transaction, type Asset, type Debt, type UserPlan, type NotificationSettings, type RecurringExpense, type HouseholdMember } from '@/lib/supabase'
+import { supabase, type Category, type Transaction, type Asset, type Debt, type ImportBatch, type UserPlan, type NotificationSettings, type RecurringExpense, type HouseholdMember } from '@/lib/supabase'
 import { startOfMonth, endOfMonth, format } from 'date-fns'
 
 // ─── Auth / household helpers ─────────────────────────────────────
@@ -233,6 +233,37 @@ export function useAssets() {
 
   const total = assets.reduce((s, a) => s + Number(a.valor), 0)
   return { assets, loading, total, refresh: load, addAsset, updateAsset, deleteAsset }
+}
+
+// ─── Import batches (histórico de importações de PDF) ─────────
+export function useImportBatches() {
+  const [batches, setBatches] = useState<ImportBatch[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const householdId = await myHouseholdId()
+    if (!householdId) { setLoading(false); return }
+    const { data } = await supabase
+      .from('import_batches')
+      .select('*')
+      .eq('household_id', householdId)
+      .order('created_at', { ascending: false })
+    setBatches(data ?? [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const addBatch = async (b: Omit<ImportBatch, 'id' | 'user_id' | 'household_id' | 'created_at'>) => {
+    const userId = await uid()
+    const householdId = await myHouseholdId()
+    if (!userId || !householdId) return
+    await supabase.from('import_batches').insert({ ...b, user_id: userId, household_id: householdId })
+    await load()
+  }
+
+  return { batches, loading, refresh: load, addBatch }
 }
 
 // ─── Debts (dívidas e financiamentos) ──────────────────────────────────
