@@ -1,6 +1,7 @@
 
+
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Send, Clock, CheckCircle, XCircle, RefreshCw, UserPlus, Copy, Check } from 'lucide-react'
+import { Plus, Pencil, Trash2, Send, Clock, CheckCircle, XCircle, RefreshCw, UserPlus, Copy, Check, AlertTriangle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useUserRole } from '@/hooks/useData'
 import { formatDate } from '@/lib/supabase'
@@ -106,9 +107,11 @@ function TemplateForm({
 
 export function AdminPage() {
   const { isAdmin, loading: roleLoading } = useUserRole()
-  const [tab,      setTab]      = useState<'templates' | 'disparos' | 'clientes'>('templates')
+  const [tab,      setTab]      = useState<'templates' | 'disparos' | 'clientes' | 'erros'>('templates')
   const [templates, setTemplates] = useState<NotificationTemplate[]>([])
   const [dispatches, setDispatches] = useState<AdminNotification[]>([])
+  const [systemErrors, setSystemErrors] = useState<any[]>([])
+  const [resolvingError, setResolvingError] = useState<string | null>(null)
   const [showAddTmpl, setShowAddTmpl] = useState(false)
   const [editTmpl,    setEditTmpl]    = useState<NotificationTemplate | null>(null)
   const [showDispatch, setShowDispatch] = useState(false)
@@ -132,7 +135,19 @@ export function AdminPage() {
     setDispatches(data ?? [])
   }
 
-  useEffect(() => { loadTemplates(); loadDispatches() }, [])
+  const loadSystemErrors = async () => {
+    const { data } = await supabase.from('system_errors').select('*').eq('resolved', false).order('created_at', { ascending: false }).limit(100)
+    setSystemErrors(data ?? [])
+  }
+
+  const resolveError = async (id: string) => {
+    setResolvingError(id)
+    await supabase.from('system_errors').update({ resolved: true, resolved_at: new Date().toISOString() }).eq('id', id)
+    await loadSystemErrors()
+    setResolvingError(null)
+  }
+
+  useEffect(() => { loadTemplates(); loadDispatches(); loadSystemErrors() }, [])
 
   const saveTemplate = async (t: Partial<NotificationTemplate>) => {
     if (editTmpl) {
@@ -248,11 +263,16 @@ export function AdminPage() {
 
       {/* Tabs */}
       <div className="flex gap-2 border-b" style={{ borderColor: 'var(--border)' }}>
-        {(['templates', 'disparos', 'clientes'] as const).map(t => (
+        {(['templates', 'disparos', 'clientes', 'erros'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors capitalize ${tab === t ? 'border-brand' : 'border-transparent'}`}
+            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors capitalize flex items-center gap-1.5 ${tab === t ? 'border-brand' : 'border-transparent'}`}
             style={{ color: tab === t ? 'var(--brand)' : 'var(--muted)', borderColor: tab === t ? 'var(--brand)' : 'transparent' }}>
             {t}
+            {t === 'erros' && systemErrors.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono text-white" style={{ background: '#DC2626' }}>
+                {systemErrors.length}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -541,6 +561,50 @@ export function AdminPage() {
                 {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 {copied ? 'Copiado!' : 'Copiar credenciais'}
               </button>
+            </div>
+          )}
+        </div>
+      )}
+      {/* Erros do sistema */}
+      {tab === 'erros' && (
+        <div className="space-y-3">
+          <p className="text-xs" style={{ color: 'var(--muted)' }}>
+            Erros técnicos que aconteceram com clientes (ex: falha no import de PDF) são registrados aqui em vez de aparecer pra eles. Marque como resolvido depois de investigar.
+          </p>
+          {systemErrors.length === 0 ? (
+            <div className="rounded-2xl border bg-white p-12 text-center" style={{ borderColor: 'var(--border)' }}>
+              <CheckCircle className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--border)' }} />
+              <p className="font-medium" style={{ color: 'var(--ink)' }}>Nenhum erro pendente</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {systemErrors.map(e => (
+                <div key={e.id} className="rounded-2xl border bg-white p-4" style={{ borderColor: '#FCA5A5' }}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: '#DC2626' }} />
+                        <span className="text-xs font-mono uppercase tracking-wide" style={{ color: '#991B1B' }}>{e.source}</span>
+                        <span className="text-xs" style={{ color: 'var(--muted)' }}>{formatDate(e.created_at)}</span>
+                      </div>
+                      <p className="text-sm font-medium mb-1" style={{ color: 'var(--ink)' }}>{e.message}</p>
+                      {e.detail && (
+                        <pre className="text-xs whitespace-pre-wrap break-all p-2 rounded-lg mt-2" style={{ background: '#FEF2F2', color: '#7F1D1D' }}>
+                          {e.detail}
+                        </pre>
+                      )}
+                      {e.user_email && (
+                        <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>Cliente: {e.user_email}</p>
+                      )}
+                    </div>
+                    <button onClick={() => resolveError(e.id)} disabled={resolvingError === e.id}
+                      className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border disabled:opacity-60"
+                      style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}>
+                      {resolvingError === e.id ? '...' : 'Marcar resolvido'}
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
