@@ -49,6 +49,18 @@ export interface Transaction {
   created_at: string
 }
 
+export interface ImportBatch {
+  id: string
+  user_id: string
+  household_id: string
+  fonte: string | null
+  periodo_inicio: string | null
+  periodo_fim: string | null
+  quantidade: number
+  valor_total: number
+  created_at: string
+}
+
 export interface Asset {
   id: string
   user_id: string
