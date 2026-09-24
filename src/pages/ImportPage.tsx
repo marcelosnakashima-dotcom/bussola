@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { Upload, CheckCircle, AlertCircle, X, RefreshCw, Sparkles, ChevronDown, ChevronUp, Clock } from 'lucide-react'
-import { useTransactions, useCategories } from '@/hooks/useData'
+import { useTransactions, useCategories, useImportBatches } from '@/hooks/useData'
 import { showToast } from '@/components/Toast'
 import { formatBRL, formatDate, supabase } from '@/lib/supabase'
 
@@ -49,6 +49,7 @@ export function ImportPage() {
 
   const { bulkInsert }                  = useTransactions()
   const { categories }                  = useCategories()
+  const { batches, addBatch }           = useImportBatches()
 
   // ── Converte File → base64
   const toBase64 = (file: File): Promise<string> =>
@@ -233,6 +234,13 @@ export function ImportPage() {
         status:      'confirmada' as const,
         confianca:   i.confianca,
       })))
+      await addBatch({
+        fonte:          result?.fonte ?? null,
+        periodo_inicio: result?.periodo?.inicio ?? null,
+        periodo_fim:    result?.periodo?.fim ?? null,
+        quantidade:     selectedItems.length,
+        valor_total:    totalSelected,
+      })
       setStep(4)
       showToast(`${selectedItems.length} despesa${selectedItems.length !== 1 ? 's' : ''} cadastrada${selectedItems.length !== 1 ? 's' : ''} com sucesso!`)
     } catch (err: any) {
@@ -298,6 +306,41 @@ export function ImportPage() {
             O PDF é lido, extraído e categorizado automaticamente
           </div>
           <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={handleFile} />
+        </div>
+      )}
+
+      {/* Histórico de importações */}
+      {step === 1 && batches.length > 0 && (
+        <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+          <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+            <h3 className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Já importado</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b" style={{ borderColor: 'var(--border)', background: '#FAFAF8' }}>
+                  <th className="px-5 py-2.5 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>ARQUIVO</th>
+                  <th className="px-5 py-2.5 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>PERÍODO</th>
+                  <th className="px-5 py-2.5 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>IMPORTADO EM</th>
+                  <th className="px-5 py-2.5 text-right text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>ITENS</th>
+                  <th className="px-5 py-2.5 text-right text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>VALOR TOTAL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {batches.map(b => (
+                  <tr key={b.id} className="border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
+                    <td className="px-5 py-3 font-medium" style={{ color: 'var(--ink)' }}>{b.fonte ?? '—'}</td>
+                    <td className="px-5 py-3 font-mono text-xs" style={{ color: 'var(--muted)' }}>
+                      {b.periodo_inicio && b.periodo_fim ? `${formatDate(b.periodo_inicio)} – ${formatDate(b.periodo_fim)}` : '—'}
+                    </td>
+                    <td className="px-5 py-3 font-mono text-xs" style={{ color: 'var(--muted)' }}>{formatDate(b.created_at.slice(0, 10))}</td>
+                    <td className="px-5 py-3 text-right font-mono" style={{ color: 'var(--ink)' }}>{b.quantidade}</td>
+                    <td className="px-5 py-3 text-right font-mono font-medium" style={{ color: 'var(--ink)' }}>{formatBRL(b.valor_total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
