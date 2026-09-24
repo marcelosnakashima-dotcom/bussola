@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { Upload, CheckCircle, AlertCircle, X, RefreshCw, Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
+import { Upload, CheckCircle, AlertCircle, X, RefreshCw, Sparkles, ChevronDown, ChevronUp, Clock } from 'lucide-react'
 import { useTransactions, useCategories } from '@/hooks/useData'
 import { showToast } from '@/components/Toast'
 import { formatBRL, formatDate, supabase } from '@/lib/supabase'
@@ -42,6 +42,7 @@ export function ImportPage() {
   const [loading,    setLoading]    = useState(false)
   const [reloading,  setReloading]  = useState(false)
   const [error,      setError]      = useState<string | null>(null)
+  const [processingIssue, setProcessingIssue] = useState(false)
   const [pdfBase64,  setPdfBase64]  = useState<string | null>(null)
   const [showJust,   setShowJust]   = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -87,6 +88,21 @@ export function ImportPage() {
     return resp.json()
   }, [])
 
+  // ── Registra o erro técnico pro admin ver (nunca mostra o erro cru pro cliente)
+  const logSystemError = async (source: string, message: string, detail?: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      await supabase.from('system_errors').insert({
+        source,
+        message,
+        detail:     detail ?? null,
+        user_email: user?.email ?? null,
+      })
+    } catch {
+      // Se até o log falhar, não trava a experiência do cliente
+    }
+  }
+
   // ── Upload e extração inicial
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -97,6 +113,7 @@ export function ImportPage() {
     }
     setLoading(true)
     setError(null)
+    setProcessingIssue(false)
     setStep(2)
 
     try {
@@ -129,7 +146,8 @@ export function ImportPage() {
       })
       setStep(3)
     } catch (err: any) {
-      setError(err.message ?? 'Erro ao processar o PDF.')
+      logSystemError('parse-pdf:upload', err.message ?? 'Erro desconhecido', file?.name)
+      setProcessingIssue(true)
       setStep(1)
     } finally {
       setLoading(false)
@@ -174,7 +192,8 @@ export function ImportPage() {
       })
       setItems(updated)
     } catch (err: any) {
-      setError(err.message)
+      logSystemError('parse-pdf:revalidate', err.message ?? 'Erro desconhecido')
+      showToast('Não foi possível recategorizar agora. Nossa equipe já foi avisada.', 'error')
     } finally {
       setReloading(false)
     }
@@ -217,14 +236,14 @@ export function ImportPage() {
       setStep(4)
       showToast(`${selectedItems.length} despesa${selectedItems.length !== 1 ? 's' : ''} cadastrada${selectedItems.length !== 1 ? 's' : ''} com sucesso!`)
     } catch (err: any) {
-      setError(err.message)
-      showToast('Erro ao cadastrar as despesas. Tente novamente.', 'error')
+      logSystemError('import:confirm', err.message ?? 'Erro desconhecido')
+      showToast('Erro ao cadastrar as despesas. Nossa equipe já foi avisada.', 'error')
     } finally {
       setLoading(false)
     }
   }
 
-  const reset = () => { setStep(1); setItems([]); setResult(null); setError(null); setPdfBase64(null) }
+  const reset = () => { setStep(1); setItems([]); setResult(null); setError(null); setProcessingIssue(false); setPdfBase64(null) }
 
   const STEPS = ['Upload', 'Extraindo', 'Revisão', 'Concluído']
 
@@ -493,6 +512,14 @@ export function ImportPage() {
           style={{ background: '#FEF2F2', color: '#991B1B' }}>
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {error}
+        </div>
+      )}
+
+      {processingIssue && (
+        <div className="rounded-xl px-4 py-3 text-sm flex items-center gap-2"
+          style={{ background: '#F5F0E8', color: 'var(--ink)' }}>
+          <Clock className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--muted)' }} />
+          Em processamento — pode levar alguns minutos. Se demorar demais, avisamos nossa equipe automaticamente.
         </div>
       )}
     </div>
