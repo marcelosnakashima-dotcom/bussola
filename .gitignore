@@ -23,3 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Supabase CLI (estado local)
+supabase/.temp
+
+# Arquivos reais de clientes (extratos, faturas, OFX) — nunca commitar
+private/
