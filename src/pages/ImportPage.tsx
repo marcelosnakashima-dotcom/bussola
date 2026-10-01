@@ -503,7 +503,8 @@ export function ImportPage() {
         tipo:        i.transferKind ? 'transferencia' as const : i.tipo,
         transfer_kind: i.transferKind,
         transfer_pair_id: i.transferKind && i.pairedExistingId ? i.pairId ?? null : null,
-        transfer_direction: i.transferKind ? (i.tipo === 'despesa' ? 'saida' as const : 'entrada' as const) : null,
+        // Só enviado em transferências: lançamentos comuns seguem funcionando sem a migração D9
+        ...(i.transferKind ? { transfer_direction: i.tipo === 'despesa' ? 'saida' as const : 'entrada' as const } : {}),
         valor:       i.valor,
         origem:      format === 'ofx' ? 'ofx' as const : 'pdf' as const,
         external_id: i.externalId ?? null,
