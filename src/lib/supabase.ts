@@ -34,6 +34,22 @@ export interface HouseholdMember {
   created_at: string
 }
 
+export type AccountTipo = 'corrente' | 'poupanca' | 'investimento' | 'cartao' | 'outro'
+
+// Conta ou cartao do household. Desativar (ativo=false) em vez de apagar,
+// para preservar o vinculo com lancamentos ja importados.
+export interface Account {
+  id: string
+  household_id: string
+  owner_user_id: string | null
+  instituicao: string
+  apelido: string
+  tipo: AccountTipo
+  final: string | null
+  ativo: boolean
+  created_at: string
+}
+
 export interface Transaction {
   id: string
   user_id: string

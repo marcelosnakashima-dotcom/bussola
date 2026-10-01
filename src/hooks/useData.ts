@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { supabase, type Category, type Transaction, type Asset, type Debt, type ImportBatch, type UserPlan, type NotificationSettings, type RecurringExpense, type HouseholdMember } from '@/lib/supabase'
+import { supabase, type Category, type Transaction, type Asset, type Debt, type ImportBatch, type UserPlan, type NotificationSettings, type RecurringExpense, type HouseholdMember, type Account } from '@/lib/supabase'
 import { startOfMonth, endOfMonth, format } from 'date-fns'
 
 // ─── Auth / household helpers ─────────────────────────────────────
@@ -306,6 +306,50 @@ export function useDebts() {
 
   const total = debts.reduce((s, d) => s + Number(d.valor), 0)
   return { debts, loading, total, refresh: load, addDebt, updateDebt, deleteDebt }
+}
+
+// ─── Accounts (contas e cartoes do household) ─────────────────────
+export type AccountInput = Pick<Account, 'instituicao' | 'apelido' | 'tipo' | 'final'>
+
+export function useAccounts() {
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [loading,  setLoading]  = useState(true)
+  const [error,    setError]    = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    const householdId = await myHouseholdId()
+    if (!householdId) { setLoading(false); return }
+    const { data, error: err } = await supabase
+      .from('accounts')
+      .select('*')
+      .eq('household_id', householdId)
+      .order('created_at')
+    setError(err?.message ?? null)
+    setAccounts(data ?? [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const addAccount = async (a: AccountInput) => {
+    const userId = await uid()
+    const householdId = await myHouseholdId()
+    if (!userId || !householdId) throw new Error('Not authenticated')
+    const { error: err } = await supabase
+      .from('accounts')
+      .insert({ ...a, owner_user_id: userId, household_id: householdId })
+    if (err) throw err
+    await load()
+  }
+
+  const updateAccount = async (id: string, a: Partial<AccountInput & Pick<Account, 'ativo'>>) => {
+    const { error: err } = await supabase.from('accounts').update(a).eq('id', id)
+    if (err) throw err
+    await load()
+  }
+
+  return { accounts, loading, error, refresh: load, addAccount, updateAccount }
 }
 
 // ─── Recurring expenses ────────────────────────────────────────────
