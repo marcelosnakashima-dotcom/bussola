@@ -57,11 +57,16 @@ export interface Transaction {
   data: string
   descricao: string
   categoria_id: string | null
-  tipo: 'despesa' | 'receita'
+  tipo: 'despesa' | 'receita' | 'transferencia'
   valor: number
-  origem: 'manual' | 'pdf'
+  origem: 'manual' | 'pdf' | 'ofx'
   status: 'pendente' | 'confirmada'
   confianca?: 'alta' | 'media' | 'revisar'
+  account_id?: string | null
+  import_batch_id?: string | null
+  transfer_kind?: 'entre_contas' | 'pagamento_fatura' | 'household' | null
+  transfer_pair_id?: string | null
+  external_id?: string | null
   created_at: string
 }
 

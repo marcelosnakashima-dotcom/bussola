@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { TrendingUp, TrendingDown, Calendar, Target, ArrowRight, Repeat, X, Pencil, Check } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { useSummary, useCategoryTotals, useAssets, useDebts, useTransactions, useRecurringExpenses } from '@/hooks/useData'
+import { useSummary, useCategoryTotals, useAssets, useDebts, useTransactions, useRecurringExpenses, useAccounts } from '@/hooks/useData'
 import { formatBRL, formatDate, type Debt } from '@/lib/supabase'
 import { DistributionBar } from '@/components/charts/DistributionBar'
 import { SaldoChart, CategoriaChart } from '@/components/charts/AnimatedCharts'
@@ -25,7 +25,15 @@ export function DashboardPage() {
   const { expenses: recurringExpenses, loading: recurringLoading, deactivate: deactivateRecurring, update: updateRecurring } = useRecurringExpenses()
 
   const monthLabel = month.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-  const recentTx   = transactions.filter(t => t.status === 'confirmada').slice(0, 6)
+  const { accounts } = useAccounts()
+  const [accountFilter, setAccountFilter] = useState('')
+  const accountName = (id?: string | null) => {
+    const a = accounts.find(x => x.id === id)
+    return a ? a.apelido : null
+  }
+  const recentTx   = transactions
+    .filter(t => t.status === 'confirmada' && (!accountFilter || t.account_id === accountFilter))
+    .slice(0, 6)
 
   // ─── Edição inline de despesa recorrente ──────────────────────────────
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -179,6 +187,17 @@ export function DashboardPage() {
         <div className="lg:col-span-3 rounded-2xl border bg-white" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: 'var(--border)' }}>
             <h3 className="font-display text-lg" style={{ color: 'var(--ink)' }}>Últimas despesas</h3>
+            {accounts.length > 0 && (
+              <select value={accountFilter} onChange={e => setAccountFilter(e.target.value)}
+                aria-label="Filtrar por conta"
+                className="ml-auto mr-3 border rounded-lg px-2 py-1 text-xs min-w-0"
+                style={{ borderColor: 'var(--border)', color: 'var(--ink)' }}>
+                <option value="">Todas as contas</option>
+                {accounts.map(a => (
+                  <option key={a.id} value={a.id}>{a.apelido}{a.ativo ? '' : ' (desativada)'}</option>
+                ))}
+              </select>
+            )}
             <Link to="/importar" className="text-sm flex items-center gap-1 hover:underline"
               style={{ color: 'var(--brand)' }}>
               Ver todas <ArrowRight className="w-3 h-3" />
@@ -207,13 +226,23 @@ export function DashboardPage() {
                         {t.descricao}
                       </p>
                       <p className="text-[11px]" style={{ color: 'var(--muted)' }}>
-                        {t.categoria_id ?? 'Sem categoria'} · {formatDate(t.data)}
+                        {t.tipo === 'transferencia' && (
+                          <span className="inline-block mr-1.5 px-1.5 py-px rounded text-[10px] font-medium"
+                            style={{ background: '#E0E7FF', color: '#3730A3' }}>
+                            Transferência
+                          </span>
+                        )}
+                        {t.tipo === 'transferencia' ? '' : `${t.categoria_id ?? 'Sem categoria'} · `}
+                        {formatDate(t.data)}
+                        {accountName(t.account_id) ? ` · ${accountName(t.account_id)}` : ''}
                       </p>
                     </div>
                     <p className={`text-sm font-mono font-medium flex-shrink-0 ${
-                      t.tipo === 'despesa' ? 'text-red-600' : 'text-green-700'
+                      t.tipo === 'despesa' ? 'text-red-600'
+                        : t.tipo === 'receita' ? 'text-green-700'
+                        : 'text-indigo-700'
                     }`}>
-                      {t.tipo === 'despesa' ? '-' : '+'}{formatBRL(t.valor)}
+                      {t.tipo === 'despesa' ? '-' : t.tipo === 'receita' ? '+' : ''}{formatBRL(t.valor)}
                     </p>
                   </div>
                 ))

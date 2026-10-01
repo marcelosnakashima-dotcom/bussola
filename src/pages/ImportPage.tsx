@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import { Upload, CheckCircle, AlertCircle, X, RefreshCw, Sparkles, ChevronDown, ChevronUp, Clock } from 'lucide-react'
 import { useTransactions, useCategories, useImportBatches } from '@/hooks/useData'
 import { showToast } from '@/components/Toast'
+import { ManualTransactionCard } from '@/components/ManualTransactionCard'
 import { formatBRL, formatDate, supabase } from '@/lib/supabase'
 
 type Step = 1 | 2 | 3 | 4
@@ -308,6 +309,9 @@ export function ImportPage() {
           <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={handleFile} />
         </div>
       )}
+
+      {/* Lançamento manual */}
+      {step === 1 && <ManualTransactionCard />}
 
       {/* Histórico de importações */}
       {step === 1 && batches.length > 0 && (

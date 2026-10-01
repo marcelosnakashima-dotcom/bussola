@@ -83,6 +83,8 @@ export function SaldoChart({ meses: mesesProp = 6 }: { meses?: number }) {
       const porMes = new Map<string, number>()
       for (const t of data ?? []) {
         const key = String(t.data).slice(0, 7)
+        // Transferencia nao altera o saldo consolidado (a outra ponta compensa)
+        if (t.tipo === 'transferencia') continue
         const delta = t.tipo === 'receita' ? Number(t.valor) : -Number(t.valor)
         porMes.set(key, (porMes.get(key) ?? 0) + delta)
       }
