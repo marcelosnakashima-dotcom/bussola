@@ -5,7 +5,7 @@ import { showToast } from '@/components/Toast'
 import { ManualTransactionCard } from '@/components/ManualTransactionCard'
 import { formatBRL, formatDate, supabase } from '@/lib/supabase'
 import { Link } from '@tanstack/react-router'
-import { detectTransfers, type TransferKind } from '@/lib/transferDetection'
+import { detectTransfers, type TransferKind, type DetectTx, PAIR_MAX_DAYS } from '@/lib/transferDetection'
 import { parseOfxBytes, ofxToRows, accountFinalMatches, type OfxStatement } from '@/lib/ofxParser'
 import { maskForCategorization, chunk, flagDuplicates, looksInverted } from '@/lib/ofxImport'
 
@@ -31,6 +31,9 @@ interface ImportItem {
   detStatus: 'auto' | 'ambigua' | 'nenhuma'
   motivo: string
   resolved: boolean                      // ambíguo já decidido pelo usuário
+  pairId?: string                        // par com lançamento já gravado (regra 3)
+  pairedExistingId?: string
+  pairedLabel?: string
   externalId?: string | null             // FITID do OFX
   duplicate?: boolean                    // já importado (mesmo FITID na conta)
 }
@@ -82,7 +85,11 @@ export function ImportPage() {
   const needsAccountChoice = activeAccounts.length > 0 && accountChoice === ''
   const { bulkInsert }                  = useTransactions()
   const { categories }                  = useCategories()
-  const { batches, addBatch }           = useImportBatches()
+  const { batches, addBatch, undoBatch } = useImportBatches()
+  const [undoing, setUndoing]   = useState<string | null>(null)
+  const [confirmUndo, setConfirmUndo] = useState<string | null>(null)
+  // Lançamentos já gravados em OUTRAS contas do household, candidatos a par (regra 3)
+  const pairPool = useRef<Map<string, { tx: DetectTx; label: string }>>(new Map())
 
   // ── Converte File → base64
   const toBase64 = (file: File): Promise<string> =>
@@ -137,6 +144,40 @@ export function ImportPage() {
     }
   }
 
+  // ── Busca candidatos a par: lançamentos comuns de outras contas, até 2 dias da janela do arquivo
+  const loadPairPool = async (list: { data: string }[], acc: string | null) => {
+    pairPool.current = new Map()
+    if (!acc || list.length === 0) return
+    const others = accounts.filter(a => a.id !== acc)
+    if (others.length === 0) return
+    try {
+      const shift = (iso: string, days: number) => {
+        const d = new Date(`${iso}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + days)
+        return d.toISOString().slice(0, 10)
+      }
+      const datas = list.map(i => i.data).sort()
+      const { data, error: err } = await supabase
+        .from('transactions')
+        .select('id, data, descricao, valor, tipo, account_id')
+        .in('account_id', others.map(a => a.id))
+        .in('tipo', ['despesa', 'receita'])
+        .gte('data', shift(datas[0], -PAIR_MAX_DAYS))
+        .lte('data', shift(datas[datas.length - 1], PAIR_MAX_DAYS))
+      if (err) throw err
+      for (const r of data ?? []) {
+        const acct = accounts.find(a => a.id === r.account_id)
+        pairPool.current.set(r.id, {
+          tx: { id: r.id, data: r.data, descricao: r.descricao, valor: Number(r.valor), tipo: r.tipo, accountId: r.account_id },
+          label: `${r.descricao} · ${acct?.apelido ?? 'outra conta'} · ${formatDate(r.data)}`,
+        })
+      }
+    } catch (err: any) {
+      // Sem candidatos o import segue; só não há pareamento com o que já está gravado
+      logSystemError('import:pair-pool', err?.message ?? 'Erro desconhecido')
+      pairPool.current = new Map()
+    }
+  }
+
   // ── Roda o motor de detecção e preenche os campos de transferência
   const applyDetection = (list: ImportItem[], acc: string | null): ImportItem[] => {
     if (!acc) return list.map(i => ({ ...i, ...DET_NONE }))
@@ -147,6 +188,7 @@ export function ImportPage() {
           id: a.id, instituicao: a.instituicao, apelido: a.apelido, tipo: a.tipo, ownerUserId: a.owner_user_id,
         })),
         people,
+        existing: [...pairPool.current.values()].map(p => p.tx),
       },
     )
     return list.map((i, idx) => {
@@ -158,6 +200,10 @@ export function ImportPage() {
         motivo: d.motivo,
         transferKind: d.status === 'auto' ? d.kind : null,
         resolved: d.status !== 'ambigua',
+        // Só pareia quando o motor tem certeza (pairId) e o par é um lançamento já gravado
+        pairId: d.pairId && pairPool.current.has(d.pairedWith ?? '') ? d.pairId : undefined,
+        pairedExistingId: d.pairId && pairPool.current.has(d.pairedWith ?? '') ? d.pairedWith : undefined,
+        pairedLabel: d.pairedWith ? pairPool.current.get(d.pairedWith)?.label : undefined,
       }
     })
   }
@@ -254,6 +300,7 @@ export function ImportPage() {
         }
       })
       // Detecção só sobre o que será importado; duplicados ficam como estão.
+      await loadPairPool(built.filter(b => !b.duplicate), accountId)
       const fresh = applyDetection(built.filter(b => !b.duplicate), accountId)
       const byId = new Map(fresh.map(f => [f.id, f]))
       setItems(built.map(b => byId.get(b.id) ?? b))
@@ -323,6 +370,7 @@ export function ImportPage() {
         ...DET_NONE,
       }))
 
+      await loadPairPool(parsed, accountId)
       setItems(applyDetection(parsed, accountId))
       setResult({
         fonte:          data.fonte,
@@ -416,9 +464,29 @@ export function ImportPage() {
   const confirm = async () => {
     if (!allCategorized || pendingAmbiguous > 0) return
     setLoading(true)
+    // Pares com lançamentos já gravados: a outra ponta vira transferência junto.
+    const links = selectedItems
+      .filter(i => i.transferKind && i.pairId && i.pairedExistingId)
+      .map(i => ({ existingId: i.pairedExistingId!, kind: i.transferKind!, pairId: i.pairId! }))
+    const linkedPairIds: string[] = []
+    let batchId: string | null = null
+    const rollback = async () => {
+      try {
+        if (batchId) await supabase.rpc('undo_import_batch', { p_batch_id: batchId, p_force_empty: true })
+        if (linkedPairIds.length > 0) await supabase.rpc('unlink_transfer_pairs', { p_pair_ids: linkedPairIds })
+      } catch (e: any) {
+        logSystemError('import:rollback', e?.message ?? 'Erro desconhecido', `pairs=${linkedPairIds.length}`)
+      }
+    }
     try {
-      // O lote vem primeiro: os lançamentos referenciam import_batch_id.
-      const batchId = await addBatch({
+      // 1) vincula as pontas já gravadas (se falhar, nada foi criado ainda)
+      for (const l of links) {
+        const { error: err } = await supabase.rpc('link_transfer_pair', { p_tx_id: l.existingId, p_kind: l.kind, p_pair_id: l.pairId })
+        if (err) throw err
+        linkedPairIds.push(l.pairId)
+      }
+      // 2) o lote vem antes dos lançamentos: eles referenciam import_batch_id
+      batchId = await addBatch({
         fonte:          result?.fonte ?? null,
         periodo_inicio: result?.periodo?.inicio ?? null,
         periodo_fim:    result?.periodo?.fim ?? null,
@@ -427,12 +495,15 @@ export function ImportPage() {
         account_id:     accountId,
         formato:        format,
       })
+      // 3) lançamentos
       await bulkInsert(selectedItems.map(i => ({
         data:        i.data,
         descricao:   i.descricao,
         categoria_id: i.transferKind ? null : i.categoriaId,
         tipo:        i.transferKind ? 'transferencia' as const : i.tipo,
         transfer_kind: i.transferKind,
+        transfer_pair_id: i.transferKind && i.pairedExistingId ? i.pairId ?? null : null,
+        transfer_direction: i.transferKind ? (i.tipo === 'despesa' ? 'saida' as const : 'entrada' as const) : null,
         valor:       i.valor,
         origem:      format === 'ofx' ? 'ofx' as const : 'pdf' as const,
         external_id: i.externalId ?? null,
@@ -444,10 +515,26 @@ export function ImportPage() {
       setStep(4)
       showToast(`${selectedItems.length} lançamento${selectedItems.length !== 1 ? 's' : ''} cadastrado${selectedItems.length !== 1 ? 's' : ''} com sucesso!`)
     } catch (err: any) {
+      await rollback()
       logSystemError('import:confirm', err.message ?? 'Erro desconhecido')
-      showToast('Erro ao cadastrar os lançamentos. Nossa equipe já foi avisada.', 'error')
+      showToast('Erro ao cadastrar os lançamentos. Nada foi salvo. Nossa equipe já foi avisada.', 'error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleUndo = async (id: string) => {
+    setUndoing(id)
+    try {
+      const r = await undoBatch(id)
+      showToast(`Importação desfeita: ${r.deleted} lançamento${r.deleted !== 1 ? 's' : ''} removido${r.deleted !== 1 ? 's' : ''}${r.restored > 0 ? ` e ${r.restored} restaurado${r.restored !== 1 ? 's' : ''}` : ''}.`)
+    } catch (err: any) {
+      logSystemError('import:undo', err?.message ?? 'Erro desconhecido', id)
+      showToast(/anterior ao controle/.test(err?.message ?? '')
+        ? 'Esta importação é antiga e não pode ser desfeita automaticamente.'
+        : 'Não foi possível desfazer a importação.', 'error')
+    } finally {
+      setUndoing(null); setConfirmUndo(null)
     }
   }
 
@@ -551,6 +638,7 @@ export function ImportPage() {
                   <th className="px-5 py-2.5 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>IMPORTADO EM</th>
                   <th className="px-5 py-2.5 text-right text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>ITENS</th>
                   <th className="px-5 py-2.5 text-right text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>VALOR TOTAL</th>
+                  <th className="px-5 py-2.5" />
                 </tr>
               </thead>
               <tbody>
@@ -563,6 +651,20 @@ export function ImportPage() {
                     <td className="px-5 py-3 font-mono text-xs" style={{ color: 'var(--muted)' }}>{formatDate(b.created_at.slice(0, 10))}</td>
                     <td className="px-5 py-3 text-right font-mono" style={{ color: 'var(--ink)' }}>{b.quantidade}</td>
                     <td className="px-5 py-3 text-right font-mono font-medium" style={{ color: 'var(--ink)' }}>{formatBRL(b.valor_total)}</td>
+                    <td className="px-5 py-3 text-right whitespace-nowrap">
+                      {confirmUndo === b.id
+                        ? <span className="text-xs">
+                            Apagar os {b.quantidade} lançamentos?{' '}
+                            <button onClick={() => handleUndo(b.id)} disabled={undoing === b.id}
+                              className="underline font-medium text-red-600 disabled:opacity-50">
+                              {undoing === b.id ? 'Desfazendo...' : 'Sim, desfazer'}
+                            </button>{' '}
+                            <button onClick={() => setConfirmUndo(null)} className="underline" style={{ color: 'var(--muted)' }}>Não</button>
+                          </span>
+                        : <button onClick={() => setConfirmUndo(b.id)} className="text-xs underline" style={{ color: 'var(--muted)' }}>
+                            Desfazer
+                          </button>}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -723,6 +825,11 @@ export function ImportPage() {
                                     </button>
                                   </div>
                                   {item.motivo && <div style={{ color: 'var(--muted)' }}>{item.motivo}</div>}
+                                  {item.pairedExistingId && item.pairedLabel && (
+                                    <div style={{ color: '#3730A3' }}>
+                                      Par com lançamento já gravado: {item.pairedLabel}. Ele também passa a ser transferência.
+                                    </div>
+                                  )}
                                 </div>
                               ) : !item.resolved && item.suggestedKind ? (
                                 <div className="mt-1 text-[11px] rounded-lg px-2 py-1.5 space-y-1" style={{ background: '#FFFBEB', color: '#78350F' }}>

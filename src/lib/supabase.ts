@@ -66,6 +66,7 @@ export interface Transaction {
   import_batch_id?: string | null
   transfer_kind?: 'entre_contas' | 'pagamento_fatura' | 'household' | null
   transfer_pair_id?: string | null
+  transfer_direction?: 'saida' | 'entrada' | null
   external_id?: string | null
   created_at: string
 }

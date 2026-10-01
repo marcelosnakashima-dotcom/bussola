@@ -285,7 +285,16 @@ export function useImportBatches() {
     return data.id as string
   }
 
-  return { batches, loading, refresh: load, addBatch }
+  // Desfaz o lote inteiro de forma atomica (funcao undo_import_batch, migracao D9):
+  // restaura parceiros pareados, apaga os lancamentos e o lote.
+  const undoBatch = async (batchId: string) => {
+    const { data, error: err } = await supabase.rpc('undo_import_batch', { p_batch_id: batchId })
+    if (err) throw err
+    await load()
+    return data as { deleted: number; restored: number }
+  }
+
+  return { batches, loading, refresh: load, addBatch, undoBatch }
 }
 
 // ─── Debts (dívidas e financiamentos) ──────────────────────────────────
