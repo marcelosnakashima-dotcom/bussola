@@ -1,11 +1,13 @@
 import { useState, useRef, useCallback } from 'react'
 import { Upload, CheckCircle, AlertCircle, X, RefreshCw, Sparkles, ChevronDown, ChevronUp, Clock } from 'lucide-react'
-import { useTransactions, useCategories, useImportBatches, useAccounts, useHouseholdPeople } from '@/hooks/useData'
+import { useTransactions, useCategories, useImportBatches, useAccounts, useHouseholdPeople, findExistingExternalIds } from '@/hooks/useData'
 import { showToast } from '@/components/Toast'
 import { ManualTransactionCard } from '@/components/ManualTransactionCard'
 import { formatBRL, formatDate, supabase } from '@/lib/supabase'
 import { Link } from '@tanstack/react-router'
 import { detectTransfers, type TransferKind } from '@/lib/transferDetection'
+import { parseOfxBytes, ofxToRows, accountFinalMatches, type OfxStatement } from '@/lib/ofxParser'
+import { maskForCategorization, chunk, flagDuplicates, looksInverted } from '@/lib/ofxImport'
 
 type Step = 1 | 2 | 3 | 4
 
@@ -29,6 +31,8 @@ interface ImportItem {
   detStatus: 'auto' | 'ambigua' | 'nenhuma'
   motivo: string
   resolved: boolean                      // ambíguo já decidido pelo usuário
+  externalId?: string | null             // FITID do OFX
+  duplicate?: boolean                    // já importado (mesmo FITID na conta)
 }
 
 const DET_NONE = {
@@ -65,6 +69,10 @@ export function ImportPage() {
   const [pdfBase64,  setPdfBase64]  = useState<string | null>(null)
   const [showJust,   setShowJust]   = useState<string | null>(null)
   const [accountChoice, setAccountChoice] = useState<string>('') // '' = não escolheu, 'none' = sem conta
+  const [format,     setFormat]     = useState<'pdf' | 'ofx'>('pdf')
+  const [ofxKind,    setOfxKind]    = useState<OfxStatement['kind'] | null>(null)
+  const [ofxNotice,  setOfxNotice]  = useState<string | null>(null)
+  const [signFlipped, setSignFlipped] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const { accounts }                    = useAccounts()
@@ -154,14 +162,140 @@ export function ImportPage() {
     })
   }
 
-  // ── Upload e extração inicial
+  // ── Categorização só por texto (Edge Function categorize-text)
+  const categorizeTexts = async (rows: { descricao: string; tipo: 'despesa' | 'receita' }[]) => {
+    const supaUrl = import.meta.env.VITE_SUPABASE_URL
+    const { data: sessionData } = await supabase.auth.getSession()
+    const accessToken = sessionData.session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY
+    const keyOf = (d: string, t: string) => `${t}|${d}`
+    const unique = new Map<string, { d: string; t: 'd' | 'r' }>()
+    for (const r of rows) {
+      const d = maskForCategorization(r.descricao)
+      unique.set(keyOf(d, r.tipo), { d, t: r.tipo === 'receita' ? 'r' : 'd' })
+    }
+    const result = new Map<string, { categoria_id: string | null; categoria_nome: string | null; confianca: ImportItem['confianca'] }>()
+    for (const part of chunk([...unique.entries()], 150)) {
+      const resp = await fetch(`${supaUrl}/functions/v1/categorize-text`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+        body: JSON.stringify({ itens: part.map(([, v]) => v) }),
+      })
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: 'Erro desconhecido' }))
+        throw new Error(err.error ?? `HTTP ${resp.status}`)
+      }
+      const data = await resp.json()
+      part.forEach(([k], i) => result.set(k, data.itens[i]))
+    }
+    return (descricao: string, tipo: string) => result.get(keyOf(maskForCategorization(descricao), tipo))
+  }
+
+  // ── Importação de OFX (sem IA de leitura: o arquivo já é estruturado)
+  const handleOfx = async (file: File) => {
+    if (!accountId) {
+      setError(activeAccounts.length === 0
+        ? 'Para importar um OFX, cadastre antes a conta em Contas e cartões.'
+        : 'Para importar um OFX, escolha acima a conta a que o arquivo pertence.')
+      return
+    }
+    const account = accounts.find(a => a.id === accountId)
+    setLoading(true); setError(null); setProcessingIssue(false); setOfxNotice(null); setSignFlipped(false)
+    setFormat('ofx'); setPdfBase64(null); setStep(2)
+    try {
+      const parsed = parseOfxBytes(await file.arrayBuffer())
+      let statement = parsed.statements[0]
+      if (parsed.statements.length > 1) {
+        const match = parsed.statements.find(s => accountFinalMatches(account?.final, s.acctId))
+        if (!match) throw new Error('Este OFX tem mais de um extrato e nenhum corresponde ao final da conta escolhida. Exporte um extrato por arquivo.')
+        statement = match
+      }
+      const rows = ofxToRows(statement)
+
+      // O arquivo é da conta escolhida? (mostra só o final, nunca o número completo)
+      if (account?.final && statement.acctId && !accountFinalMatches(account.final, statement.acctId)) {
+        setOfxNotice(`O número da conta no arquivo (final ${statement.acctId.replace(/\D/g, '').slice(-4)}) não bate com o final cadastrado (${account.final}). Confira se escolheu a conta certa.`)
+      } else if (parsed.warnings.length > 0) {
+        setOfxNotice(parsed.warnings[0])
+      }
+      setOfxKind(statement.kind)
+
+      // Deduplicação por FITID
+      const existing = await findExistingExternalIds(accountId, rows.map(r => r.externalId).filter((x): x is string => !!x))
+      const flagged = flagDuplicates(rows, existing)
+
+      // Categorização só por texto: se falhar, segue sem categoria (o usuário escolhe)
+      let lookup: Awaited<ReturnType<typeof categorizeTexts>> | null = null
+      try {
+        lookup = await categorizeTexts(flagged.filter(f => !f.duplicate).map(f => f.row))
+      } catch (err: any) {
+        logSystemError('categorize-text', err.message ?? 'Erro desconhecido', file.name)
+        showToast('Não foi possível categorizar automaticamente. Escolha as categorias manualmente.', 'error')
+      }
+
+      const built: ImportItem[] = flagged.map(({ row, duplicate, externalId }) => {
+        const cat = lookup?.(row.descricao, row.tipo)
+        return {
+          id: crypto.randomUUID(),
+          descricao: row.descricao,
+          data: row.data,
+          valor: row.valor,
+          tipo: row.tipo,
+          categoriaId: cat?.categoria_id ?? null,
+          categoriaNome: cat?.categoria_nome ?? null,
+          categoriaIdOriginal: cat?.categoria_id ?? null,
+          categoriaNomeOriginal: cat?.categoria_nome ?? null,
+          confianca: cat?.confianca ?? 'revisar',
+          justificativa: '',
+          selected: !duplicate,
+          corrected: false,
+          externalId,
+          duplicate,
+          ...DET_NONE,
+        }
+      })
+      // Detecção só sobre o que será importado; duplicados ficam como estão.
+      const fresh = applyDetection(built.filter(b => !b.duplicate), accountId)
+      const byId = new Map(fresh.map(f => [f.id, f]))
+      setItems(built.map(b => byId.get(b.id) ?? b))
+
+      const datas = rows.map(r => r.data).sort()
+      setResult({
+        fonte: `OFX · ${account?.apelido ?? account?.instituicao ?? 'conta'}`,
+        periodo: statement.inicio && statement.fim
+          ? { inicio: statement.inicio, fim: statement.fim }
+          : datas.length ? { inicio: datas[0], fim: datas[datas.length - 1] } : null,
+        total_despesas: rows.filter(r => r.tipo === 'despesa').reduce((s, r) => s + r.valor, 0),
+        total_receitas: rows.filter(r => r.tipo === 'receita').reduce((s, r) => s + r.valor, 0),
+      })
+      setStep(3)
+    } catch (err: any) {
+      setError(err?.message ?? 'Não foi possível ler o arquivo OFX.')
+      logSystemError('ofx:upload', err?.message ?? 'Erro desconhecido', file.name)
+      setStep(1)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Cartão com sinais invertidos: troca despesa/receita e reaplica o motor.
+  const flipSigns = () => {
+    setSignFlipped(f => !f)
+    const flipped = items.map(i => ({ ...i, tipo: i.tipo === 'despesa' ? 'receita' as const : 'despesa' as const }))
+    const fresh = applyDetection(flipped.filter(i => !i.duplicate), accountId)
+    const byId = new Map(fresh.map(f => [f.id, f]))
+    setItems(flipped.map(i => byId.get(i.id) ?? i))
+  }
+
+  // ── Upload e extração inicial (PDF)
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (/\.ofx$/i.test(file.name)) { await handleOfx(file); e.target.value = ''; return }
     if (file.type !== 'application/pdf') {
-      setError('Por favor envie um arquivo PDF.')
+      setError('Envie um arquivo PDF ou OFX.')
       return
     }
+    setFormat('pdf')
     setLoading(true)
     setError(null)
     setProcessingIssue(false)
@@ -291,7 +425,7 @@ export function ImportPage() {
         quantidade:     selectedItems.length,
         valor_total:    totalSelected,
         account_id:     accountId,
-        formato:        'pdf',
+        formato:        format,
       })
       await bulkInsert(selectedItems.map(i => ({
         data:        i.data,
@@ -300,7 +434,8 @@ export function ImportPage() {
         tipo:        i.transferKind ? 'transferencia' as const : i.tipo,
         transfer_kind: i.transferKind,
         valor:       i.valor,
-        origem:      'pdf' as const,
+        origem:      format === 'ofx' ? 'ofx' as const : 'pdf' as const,
+        external_id: i.externalId ?? null,
         status:      'confirmada' as const,
         confianca:   i.confianca,
         account_id:  accountId,
@@ -316,7 +451,7 @@ export function ImportPage() {
     }
   }
 
-  const reset = () => { setStep(1); setItems([]); setResult(null); setError(null); setProcessingIssue(false); setPdfBase64(null); setAccountChoice('') }
+  const reset = () => { setStep(1); setItems([]); setResult(null); setError(null); setProcessingIssue(false); setPdfBase64(null); setAccountChoice(''); setFormat('pdf'); setOfxKind(null); setOfxNotice(null); setSignFlipped(false) }
 
   const STEPS = ['Upload', 'Extraindo', 'Revisão', 'Concluído']
 
@@ -388,13 +523,13 @@ export function ImportPage() {
             Arraste ou clique para enviar
           </p>
           <p className="text-sm" style={{ color: 'var(--muted)' }}>
-            {needsAccountChoice ? 'Escolha a conta acima para enviar' : 'Fatura de cartão ou extrato bancário em PDF'}
+            {needsAccountChoice ? 'Escolha a conta acima para enviar' : 'Fatura ou extrato em PDF ou OFX'}
           </p>
           <div className="flex items-center justify-center gap-2 mt-4 text-xs" style={{ color: 'var(--muted)' }}>
             <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--brand)' }} />
-            O PDF é lido, extraído e categorizado automaticamente
+            PDF (lido e categorizado pela IA) ou OFX (extrato estruturado do banco)
           </div>
-          <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={handleFile} />
+          <input ref={fileRef} type="file" accept=".pdf,.ofx" className="hidden" onChange={handleFile} />
         </div>
       )}
 
@@ -468,8 +603,32 @@ export function ImportPage() {
             </div>
           )}
 
+          {/* OFX: avisos, duplicados e sinais do cartão */}
+          {format === 'ofx' && ofxNotice && (
+            <div className="rounded-xl px-4 py-3 text-sm flex items-center gap-2" style={{ background: '#FFFBEB', color: '#78350F' }}>
+              <AlertCircle className="w-4 h-4 flex-shrink-0" /> {ofxNotice}
+            </div>
+          )}
+          {format === 'ofx' && items.some(i => i.duplicate) && (
+            <div className="rounded-xl px-4 py-3 text-sm" style={{ background: '#EFF6FF', color: '#1E3A8A' }}>
+              {items.filter(i => i.duplicate).length} lançamento{items.filter(i => i.duplicate).length !== 1 ? 's' : ''} já importado{items.filter(i => i.duplicate).length !== 1 ? 's' : ''} antes (mesmo código do banco) e desmarcado{items.filter(i => i.duplicate).length !== 1 ? 's' : ''}.
+            </div>
+          )}
+          {format === 'ofx' && ofxKind === 'cartao' && (signFlipped || looksInverted('cartao', items.map(i => i.tipo))) && (
+            <div className="rounded-xl border px-4 py-3 flex items-center justify-between gap-3 flex-wrap" style={{ borderColor: '#FCD34D', background: '#FFFBEB' }}>
+              <p className="text-sm" style={{ color: '#78350F' }}>
+                {signFlipped
+                  ? 'Sinais invertidos: compras agora aparecem como despesa.'
+                  : 'A maioria dos lançamentos do cartão aparece como receita. Alguns emissores enviam compras com sinal positivo.'}
+              </p>
+              <button onClick={flipSigns} className="px-3 py-1.5 rounded-lg text-xs font-medium text-white" style={{ background: 'var(--brand)' }}>
+                {signFlipped ? 'Desfazer inversão' : 'Inverter sinais'}
+              </button>
+            </div>
+          )}
+
           {/* Revalidate banner */}
-          {corrections.length > 0 && (
+          {format === 'pdf' && corrections.length > 0 && (
             <div className="rounded-xl border px-4 py-3 flex items-center justify-between gap-3 flex-wrap"
               style={{ background: '#F0FDF4', borderColor: '#86EFAC' }}>
               <p className="text-sm text-green-800">
@@ -505,8 +664,8 @@ export function ImportPage() {
                     <tr className="border-b" style={{ borderColor: 'var(--border)', background: '#FAFAF8' }}>
                       <th className="w-10 px-3 py-3 text-left">
                         <input type="checkbox"
-                          checked={items.every(i => i.selected)}
-                          onChange={e => setItems(items.map(i => ({ ...i, selected: e.target.checked })))}
+                          checked={items.filter(i => !i.duplicate).every(i => i.selected)}
+                          onChange={e => setItems(items.map(i => i.duplicate ? i : { ...i, selected: e.target.checked }))}
                         />
                       </th>
                       <th className="px-3 py-3 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>DESCRIÇÃO</th>
@@ -530,11 +689,18 @@ export function ImportPage() {
                               opacity: item.selected ? 1 : 0.5,
                             }}>
                             <td className="px-3 py-2.5">
-                              <input type="checkbox" checked={item.selected}
+                              <input type="checkbox" checked={item.selected} disabled={item.duplicate}
                                 onChange={e => setItems(items.map(i => i.id === item.id ? { ...i, selected: e.target.checked } : i))} />
                             </td>
                             <td className="px-3 py-2.5">
-                              <div className="font-medium" style={{ color: 'var(--ink)' }}>{item.descricao}</div>
+                              <div className="font-medium" style={{ color: 'var(--ink)' }}>
+                                {item.descricao}
+                                {item.duplicate && (
+                                  <span className="ml-2 px-1.5 py-px rounded text-[10px] font-medium" style={{ background: '#DBEAFE', color: '#1E40AF' }}>
+                                    Já importado
+                                  </span>
+                                )}
+                              </div>
                               {item.corrected && (
                                 <div className="text-[10px] mt-0.5" style={{ color: 'var(--brand)' }}>
                                   ✓ corrigido por você

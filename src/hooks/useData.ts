@@ -140,6 +140,21 @@ export function useTransactions(month?: Date) {
   return { transactions, loading, error, refresh: load, addTransaction, deleteTransaction, bulkInsert }
 }
 
+// FITIDs ja gravados numa conta (deduplicacao de OFX). A RLS limita ao household.
+export async function findExistingExternalIds(accountId: string, ids: string[]): Promise<Set<string>> {
+  const found = new Set<string>()
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('external_id')
+      .eq('account_id', accountId)
+      .in('external_id', ids.slice(i, i + 200))
+    if (error) throw error
+    for (const r of data ?? []) if (r.external_id) found.add(r.external_id as string)
+  }
+  return found
+}
+
 // ─── Summary ───────────────────────────────────────────────
 export function useSummary(month?: Date) {
   const { transactions, loading: txLoading }  = useTransactions(month)
