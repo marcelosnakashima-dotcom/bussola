@@ -1,9 +1,11 @@
 import { useState, useRef, useCallback } from 'react'
 import { Upload, CheckCircle, AlertCircle, X, RefreshCw, Sparkles, ChevronDown, ChevronUp, Clock } from 'lucide-react'
-import { useTransactions, useCategories, useImportBatches } from '@/hooks/useData'
+import { useTransactions, useCategories, useImportBatches, useAccounts, useHouseholdPeople } from '@/hooks/useData'
 import { showToast } from '@/components/Toast'
 import { ManualTransactionCard } from '@/components/ManualTransactionCard'
 import { formatBRL, formatDate, supabase } from '@/lib/supabase'
+import { Link } from '@tanstack/react-router'
+import { detectTransfers, type TransferKind } from '@/lib/transferDetection'
 
 type Step = 1 | 2 | 3 | 4
 
@@ -21,6 +23,22 @@ interface ImportItem {
   justificativa: string
   selected: boolean
   corrected: boolean  // usuário alterou a categoria
+  // Transferências (motor de detecção)
+  transferKind: TransferKind | null      // aplicado agora; null = lançamento comum
+  suggestedKind: TransferKind | null     // sugestão do motor
+  detStatus: 'auto' | 'ambigua' | 'nenhuma'
+  motivo: string
+  resolved: boolean                      // ambíguo já decidido pelo usuário
+}
+
+const DET_NONE = {
+  transferKind: null, suggestedKind: null, detStatus: 'nenhuma' as const, motivo: '', resolved: true,
+}
+
+const KIND_LABEL: Record<TransferKind, string> = {
+  entre_contas: 'Entre contas',
+  pagamento_fatura: 'Pagamento de fatura',
+  household: 'Entre membros do household',
 }
 
 interface ParseResult {
@@ -46,8 +64,14 @@ export function ImportPage() {
   const [processingIssue, setProcessingIssue] = useState(false)
   const [pdfBase64,  setPdfBase64]  = useState<string | null>(null)
   const [showJust,   setShowJust]   = useState<string | null>(null)
+  const [accountChoice, setAccountChoice] = useState<string>('') // '' = não escolheu, 'none' = sem conta
   const fileRef = useRef<HTMLInputElement>(null)
 
+  const { accounts }                    = useAccounts()
+  const { people, loading: peopleLoading } = useHouseholdPeople()
+  const activeAccounts = accounts.filter(a => a.ativo)
+  const accountId = accountChoice && accountChoice !== 'none' ? accountChoice : null
+  const needsAccountChoice = activeAccounts.length > 0 && accountChoice === ''
   const { bulkInsert }                  = useTransactions()
   const { categories }                  = useCategories()
   const { batches, addBatch }           = useImportBatches()
@@ -105,6 +129,31 @@ export function ImportPage() {
     }
   }
 
+  // ── Roda o motor de detecção e preenche os campos de transferência
+  const applyDetection = (list: ImportItem[], acc: string | null): ImportItem[] => {
+    if (!acc) return list.map(i => ({ ...i, ...DET_NONE }))
+    const out = detectTransfers(
+      list.map(i => ({ id: i.id, data: i.data, descricao: i.descricao, valor: i.valor, tipo: i.tipo, accountId: acc })),
+      {
+        accounts: accounts.map(a => ({
+          id: a.id, instituicao: a.instituicao, apelido: a.apelido, tipo: a.tipo, ownerUserId: a.owner_user_id,
+        })),
+        people,
+      },
+    )
+    return list.map((i, idx) => {
+      const d = out[idx]
+      return {
+        ...i,
+        suggestedKind: d.kind,
+        detStatus: d.status,
+        motivo: d.motivo,
+        transferKind: d.status === 'auto' ? d.kind : null,
+        resolved: d.status !== 'ambigua',
+      }
+    })
+  }
+
   // ── Upload e extração inicial
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -137,9 +186,10 @@ export function ImportPage() {
         justificativa:         t.justificativa,
         selected:              true,
         corrected:             false,
+        ...DET_NONE,
       }))
 
-      setItems(parsed)
+      setItems(applyDetection(parsed, accountId))
       setResult({
         fonte:          data.fonte,
         periodo:        data.periodo,
@@ -190,6 +240,9 @@ export function ImportPage() {
           justificativa:         t.justificativa,
           selected:              existing?.selected ?? true,
           corrected:             false,
+          ...(existing
+            ? { transferKind: existing.transferKind, suggestedKind: existing.suggestedKind, detStatus: existing.detStatus, motivo: existing.motivo, resolved: existing.resolved }
+            : DET_NONE),
         }
       })
       setItems(updated)
@@ -216,43 +269,54 @@ export function ImportPage() {
   }
 
   const selectedItems   = items.filter(i => i.selected)
-  const allCategorized  = selectedItems.every(i => i.categoriaId)
+  const allCategorized  = selectedItems.every(i => i.transferKind || i.categoriaId)
+  const pendingAmbiguous = selectedItems.filter(i => !i.resolved).length
+  const transferCount    = selectedItems.filter(i => i.transferKind).length
+  const transferTotal    = selectedItems.filter(i => i.transferKind).reduce((s, i) => s + i.valor, 0)
+  const patchItem = (id: string, patch: Partial<ImportItem>) =>
+    setItems(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i))
   const corrections     = items.filter(i => i.corrected && i.categoriaIdOriginal !== i.categoriaId)
   const totalSelected   = selectedItems.reduce((s, i) => s + i.valor, 0)
   const needsReview     = items.filter(i => i.confianca === 'revisar' && !i.corrected).length
 
   const confirm = async () => {
-    if (!allCategorized) return
+    if (!allCategorized || pendingAmbiguous > 0) return
     setLoading(true)
     try {
-      await bulkInsert(selectedItems.map(i => ({
-        data:        i.data,
-        descricao:   i.descricao,
-        categoria_id: i.categoriaId,
-        tipo:        i.tipo,
-        valor:       i.valor,
-        origem:      'pdf' as const,
-        status:      'confirmada' as const,
-        confianca:   i.confianca,
-      })))
-      await addBatch({
+      // O lote vem primeiro: os lançamentos referenciam import_batch_id.
+      const batchId = await addBatch({
         fonte:          result?.fonte ?? null,
         periodo_inicio: result?.periodo?.inicio ?? null,
         periodo_fim:    result?.periodo?.fim ?? null,
         quantidade:     selectedItems.length,
         valor_total:    totalSelected,
+        account_id:     accountId,
+        formato:        'pdf',
       })
+      await bulkInsert(selectedItems.map(i => ({
+        data:        i.data,
+        descricao:   i.descricao,
+        categoria_id: i.transferKind ? null : i.categoriaId,
+        tipo:        i.transferKind ? 'transferencia' as const : i.tipo,
+        transfer_kind: i.transferKind,
+        valor:       i.valor,
+        origem:      'pdf' as const,
+        status:      'confirmada' as const,
+        confianca:   i.confianca,
+        account_id:  accountId,
+        import_batch_id: batchId,
+      })))
       setStep(4)
-      showToast(`${selectedItems.length} despesa${selectedItems.length !== 1 ? 's' : ''} cadastrada${selectedItems.length !== 1 ? 's' : ''} com sucesso!`)
+      showToast(`${selectedItems.length} lançamento${selectedItems.length !== 1 ? 's' : ''} cadastrado${selectedItems.length !== 1 ? 's' : ''} com sucesso!`)
     } catch (err: any) {
       logSystemError('import:confirm', err.message ?? 'Erro desconhecido')
-      showToast('Erro ao cadastrar as despesas. Nossa equipe já foi avisada.', 'error')
+      showToast('Erro ao cadastrar os lançamentos. Nossa equipe já foi avisada.', 'error')
     } finally {
       setLoading(false)
     }
   }
 
-  const reset = () => { setStep(1); setItems([]); setResult(null); setError(null); setProcessingIssue(false); setPdfBase64(null) }
+  const reset = () => { setStep(1); setItems([]); setResult(null); setError(null); setProcessingIssue(false); setPdfBase64(null); setAccountChoice('') }
 
   const STEPS = ['Upload', 'Extraindo', 'Revisão', 'Concluído']
 
@@ -289,18 +353,42 @@ export function ImportPage() {
 
       {/* Step 1: Upload */}
       {step === 1 && (
+        <div className="rounded-2xl border bg-white p-5 space-y-2" style={{ borderColor: 'var(--border)' }}>
+          <label className="text-sm font-medium block" style={{ color: 'var(--ink)' }}>
+            De qual conta é este arquivo?
+          </label>
+          {activeAccounts.length === 0
+            ? <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                Você ainda não cadastrou contas. <Link to="/contas" className="underline" style={{ color: 'var(--brand)' }}>Cadastre suas contas e cartões</Link>{' '}
+                para identificarmos transferências automaticamente.
+              </p>
+            : <>
+                <select value={accountChoice} onChange={e => setAccountChoice(e.target.value)}
+                  className="w-full md:max-w-sm border rounded-xl px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }}>
+                  <option value="">Selecione...</option>
+                  {activeAccounts.map(a => <option key={a.id} value={a.id}>{a.apelido} · {a.instituicao}</option>)}
+                  <option value="none">Não informar (sem detecção de transferências)</option>
+                </select>
+                <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                  Usamos a conta para separar transferências (entre contas, pagamento de fatura) de despesas reais.
+                </p>
+              </>}
+        </div>
+      )}
+
+      {step === 1 && (
         <div
-          onClick={() => fileRef.current?.click()}
-          className="rounded-2xl border-2 border-dashed p-14 text-center cursor-pointer hover:border-brand transition-colors"
+          onClick={() => { if (!needsAccountChoice && !peopleLoading) fileRef.current?.click() }}
+          className={`rounded-2xl border-2 border-dashed p-14 text-center transition-colors ${needsAccountChoice || peopleLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-brand'}`}
           style={{ borderColor: 'var(--border)' }}
           onDragOver={e => { e.preventDefault() }}
-          onDrop={e => { e.preventDefault(); const file = e.dataTransfer.files[0]; if (file) { const dt = new DataTransfer(); dt.items.add(file); if (fileRef.current) { fileRef.current.files = dt.files; handleFile({ target: fileRef.current } as any) } } }}>
+          onDrop={e => { e.preventDefault(); if (needsAccountChoice || peopleLoading) return; const file = e.dataTransfer.files[0]; if (file) { const dt = new DataTransfer(); dt.items.add(file); if (fileRef.current) { fileRef.current.files = dt.files; handleFile({ target: fileRef.current } as any) } } }}>
           <Upload className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--muted)' }} />
           <p className="font-medium text-lg mb-1" style={{ color: 'var(--ink)' }}>
             Arraste ou clique para enviar
           </p>
           <p className="text-sm" style={{ color: 'var(--muted)' }}>
-            Fatura de cartão ou extrato bancário em PDF
+            {needsAccountChoice ? 'Escolha a conta acima para enviar' : 'Fatura de cartão ou extrato bancário em PDF'}
           </p>
           <div className="flex items-center justify-center gap-2 mt-4 text-xs" style={{ color: 'var(--muted)' }}>
             <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--brand)' }} />
@@ -452,6 +540,44 @@ export function ImportPage() {
                                   ✓ corrigido por você
                                 </div>
                               )}
+                              {item.transferKind ? (
+                                <div className="mt-1 text-[11px] space-y-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="px-1.5 py-px rounded font-medium" style={{ background: '#E0E7FF', color: '#3730A3' }}>
+                                      Transferência
+                                    </span>
+                                    <select value={item.transferKind} aria-label="Tipo de transferência"
+                                      onChange={e => patchItem(item.id, { transferKind: e.target.value as TransferKind, resolved: true })}
+                                      className="border rounded px-1 py-0.5 text-[11px]" style={{ borderColor: 'var(--border)' }}>
+                                      {(Object.keys(KIND_LABEL) as TransferKind[]).map(k => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
+                                    </select>
+                                    <button type="button" className="underline" style={{ color: 'var(--muted)' }}
+                                      onClick={() => patchItem(item.id, { transferKind: null, resolved: true })}>
+                                      Não é transferência
+                                    </button>
+                                  </div>
+                                  {item.motivo && <div style={{ color: 'var(--muted)' }}>{item.motivo}</div>}
+                                </div>
+                              ) : !item.resolved && item.suggestedKind ? (
+                                <div className="mt-1 text-[11px] rounded-lg px-2 py-1.5 space-y-1" style={{ background: '#FFFBEB', color: '#78350F' }}>
+                                  <div><strong>Possível transferência ({KIND_LABEL[item.suggestedKind]}).</strong> {item.motivo}</div>
+                                  <div className="flex gap-3">
+                                    <button type="button" className="underline font-medium"
+                                      onClick={() => patchItem(item.id, { transferKind: item.suggestedKind, resolved: true })}>
+                                      É transferência
+                                    </button>
+                                    <button type="button" className="underline"
+                                      onClick={() => patchItem(item.id, { transferKind: null, resolved: true })}>
+                                      Não é
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : accountId && (
+                                <button type="button" className="mt-0.5 text-[10px] underline" style={{ color: 'var(--muted)' }}
+                                  onClick={() => patchItem(item.id, { transferKind: item.suggestedKind ?? 'entre_contas', resolved: true })}>
+                                  Marcar como transferência
+                                </button>
+                              )}
                             </td>
                             <td className="px-3 py-2.5 font-mono text-xs" style={{ color: 'var(--muted)' }}>
                               {formatDate(item.data)}
@@ -466,7 +592,7 @@ export function ImportPage() {
                               </button>
                             </td>
                             <td className="px-3 py-2.5">
-                              <select
+                              {item.transferKind ? <span className="text-xs" style={{ color: 'var(--muted)' }}>—</span> : <select
                                 value={item.categoriaId ?? ''}
                                 className={`border rounded-lg px-2 py-1 text-xs outline-none max-w-[180px] ${!item.categoriaId ? 'border-amber-400 bg-amber-50' : ''}`}
                                 style={{ borderColor: item.categoriaId ? 'var(--border)' : '#F59E0B' }}
@@ -475,11 +601,11 @@ export function ImportPage() {
                                 {categories.map(c => (
                                   <option key={c.id} value={c.id}>{c.nome}</option>
                                 ))}
-                              </select>
+                              </select>}
                             </td>
                             <td className="px-3 py-2.5 text-right font-mono font-medium"
-                              style={{ color: item.tipo === 'despesa' ? '#DC2626' : '#16A34A' }}>
-                              {item.tipo === 'despesa' ? '-' : '+'}{formatBRL(item.valor)}
+                              style={{ color: item.transferKind ? '#4338CA' : item.tipo === 'despesa' ? '#DC2626' : '#16A34A' }}>
+                              {item.transferKind ? '' : item.tipo === 'despesa' ? '-' : '+'}{formatBRL(item.valor)}
                             </td>
                             <td className="px-3 py-2.5">
                               <button onClick={() => setItems(items.filter(i => i.id !== item.id))}
@@ -512,7 +638,11 @@ export function ImportPage() {
                     {formatBRL(totalSelected)}
                   </span>
                 </div>
-                {!allCategorized && (
+                {pendingAmbiguous > 0
+                  ? <p className="text-xs font-medium" style={{ color: '#D97706' }}>
+                      Decida os {pendingAmbiguous} lançamento{pendingAmbiguous !== 1 ? 's' : ''} com possível transferência antes de confirmar
+                    </p>
+                  : !allCategorized && (
                   <p className="text-xs font-medium" style={{ color: '#D97706' }}>
                     Selecione a categoria de todos os itens antes de confirmar
                   </p>
@@ -520,10 +650,10 @@ export function ImportPage() {
                 <div className="flex gap-2 flex-shrink-0">
                   <button onClick={reset} className="px-4 py-2 rounded-xl text-sm border"
                     style={{ borderColor: 'var(--border)' }}>Cancelar</button>
-                  <button onClick={confirm} disabled={!allCategorized || loading || selectedItems.length === 0}
+                  <button onClick={confirm} disabled={!allCategorized || pendingAmbiguous > 0 || loading || selectedItems.length === 0}
                     className="px-5 py-2 rounded-xl text-sm font-medium text-white disabled:opacity-50"
                     style={{ background: 'var(--brand)' }}>
-                    {loading ? 'Salvando...' : `Confirmar ${selectedItems.length} despesa${selectedItems.length !== 1 ? 's' : ''}`}
+                    {loading ? 'Salvando...' : `Confirmar ${selectedItems.length} lançamento${selectedItems.length !== 1 ? 's' : ''}`}
                   </button>
                 </div>
               </div>
@@ -537,10 +667,11 @@ export function ImportPage() {
         <div className="rounded-2xl border bg-white p-14 text-center" style={{ borderColor: 'var(--border)' }}>
           <CheckCircle className="w-16 h-16 mx-auto mb-4 text-green-600" />
           <p className="font-display text-3xl mb-2" style={{ color: 'var(--ink)' }}>
-            {selectedItems.length} despesa{selectedItems.length !== 1 ? 's' : ''} importada{selectedItems.length !== 1 ? 's' : ''}!
+            {selectedItems.length} lançamento{selectedItems.length !== 1 ? 's' : ''} importado{selectedItems.length !== 1 ? 's' : ''}!
           </p>
           <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
-            Total de {formatBRL(totalSelected)} adicionado ao seu mês.
+            Total de {formatBRL(totalSelected - transferTotal)} adicionado ao seu mês
+            {transferCount > 0 && `, fora ${transferCount} transferência${transferCount !== 1 ? 's' : ''} (${formatBRL(transferTotal)}) que não entram no cálculo de despesas`}.
           </p>
           {corrections.length > 0 && (
             <p className="text-sm mb-6" style={{ color: 'var(--brand)' }}>

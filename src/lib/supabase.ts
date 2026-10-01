@@ -80,6 +80,8 @@ export interface ImportBatch {
   quantidade: number
   valor_total: number
   created_at: string
+  account_id?: string | null
+  formato?: 'pdf' | 'ofx' | 'manual' | null
 }
 
 export interface Asset {

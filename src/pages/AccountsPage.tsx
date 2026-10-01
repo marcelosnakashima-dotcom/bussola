@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus, Pencil, Landmark, Power } from 'lucide-react'
-import { useAccounts, type AccountInput } from '@/hooks/useData'
+import { useAccounts, useHouseholdPeople, type AccountInput } from '@/hooks/useData'
 import { showToast } from '@/components/Toast'
 import type { Account, AccountTipo } from '@/lib/supabase'
 
@@ -13,9 +13,10 @@ const TIPO_LABELS: Record<AccountTipo, string> = {
 }
 
 function AccountForm({
-  initial, onSave, onCancel
+  initial, people, onSave, onCancel
 }: {
   initial?: Partial<Account>
+  people: { userId: string; nome: string }[]
   onSave: (a: AccountInput) => Promise<void>
   onCancel: () => void
 }) {
@@ -23,6 +24,7 @@ function AccountForm({
   const [apelido,     setApelido]     = useState(initial?.apelido ?? '')
   const [tipo,        setTipo]        = useState<AccountTipo>(initial?.tipo ?? 'corrente')
   const [final,       setFinal]       = useState(initial?.final ?? '')
+  const [owner,       setOwner]       = useState(initial?.owner_user_id ?? '')
   const [saving,      setSaving]      = useState(false)
 
   const handleSave = async (e: React.FormEvent) => {
@@ -33,6 +35,7 @@ function AccountForm({
       apelido: apelido.trim(),
       tipo,
       final: final.trim() || null,
+      owner_user_id: owner || null,
     })
     setSaving(false)
   }
@@ -66,6 +69,17 @@ function AccountForm({
             onChange={e => setFinal(e.target.value.replace(/\D/g, ''))}
             className="w-full border rounded-xl px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
         </div>
+        {people.length > 1 && (
+          <div className="col-span-2">
+            <label className="text-xs mb-1 block" style={{ color: 'var(--muted)' }}>Titular da conta</label>
+            <select value={owner} onChange={e => setOwner(e.target.value)}
+              className="w-full border rounded-xl px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }}>
+              {!initial?.id && <option value="">Eu</option>}
+              {initial?.id && <option value="">Não definido</option>}
+              {people.map(p => <option key={p.userId} value={p.userId}>{p.nome}</option>)}
+            </select>
+          </div>
+        )}
       </div>
       <div className="flex gap-2 pt-1">
         <button type="submit" disabled={saving}
@@ -84,6 +98,7 @@ function AccountForm({
 
 export function AccountsPage() {
   const { accounts, loading, error, addAccount, updateAccount } = useAccounts()
+  const { people } = useHouseholdPeople()
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState<Account | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -108,6 +123,7 @@ export function AccountsPage() {
         ? <div className="rounded-2xl border bg-white p-4 col-span-full" style={{ borderColor: 'var(--border)' }}>
             <AccountForm
               initial={a}
+              people={people}
               onSave={async upd => {
                 try {
                   await updateAccount(a.id, upd)
@@ -138,6 +154,7 @@ export function AccountsPage() {
             <p className="text-sm font-medium truncate" style={{ color: 'var(--ink)' }}>{a.apelido}</p>
             <p className="text-xs mt-1 truncate" style={{ color: 'var(--muted)' }}>
               {a.instituicao}{a.final ? ` · final ${a.final}` : ''}
+              {people.length > 1 && ` · ${people.find(p => p.userId === a.owner_user_id)?.nome ?? 'titular não definido'}`}
             </p>
           </div>
       }
@@ -172,6 +189,7 @@ export function AccountsPage() {
         <div className="rounded-2xl border bg-white p-5" style={{ borderColor: 'var(--border)' }}>
           <h3 className="font-medium mb-4" style={{ color: 'var(--ink)' }}>Nova conta ou cartão</h3>
           <AccountForm
+            people={people}
             onSave={async a => {
               try {
                 await addAccount(a)

@@ -255,12 +255,19 @@ export function useImportBatches() {
 
   useEffect(() => { load() }, [load])
 
+  // Devolve o id do lote para vincular os lancamentos (import_batch_id).
   const addBatch = async (b: Omit<ImportBatch, 'id' | 'user_id' | 'household_id' | 'created_at'>) => {
     const userId = await uid()
     const householdId = await myHouseholdId()
-    if (!userId || !householdId) return
-    await supabase.from('import_batches').insert({ ...b, user_id: userId, household_id: householdId })
+    if (!userId || !householdId) throw new Error('Not authenticated')
+    const { data, error: err } = await supabase
+      .from('import_batches')
+      .insert({ ...b, user_id: userId, household_id: householdId })
+      .select('id')
+      .single()
+    if (err) throw err
     await load()
+    return data.id as string
   }
 
   return { batches, loading, refresh: load, addBatch }
@@ -308,8 +315,33 @@ export function useDebts() {
   return { debts, loading, total, refresh: load, addDebt, updateDebt, deleteDebt }
 }
 
+// ─── Pessoas do household (nome + id), usadas na deteccao de transferencias ──
+// Usa a RPC household_people (migracao D6). Se ela ainda nao existir em
+// producao, cai para so o usuario logado: transferencias para si mesmo
+// continuam detectaveis, mas as do conjuge ficam de fora.
+export function useHouseholdPeople() {
+  const [people, setPeople]   = useState<{ userId: string; nome: string }[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase.rpc('household_people')
+      if (!error && data) {
+        setPeople((data as { user_id: string; nome: string }[]).map(r => ({ userId: r.user_id, nome: r.nome })))
+      } else {
+        const { data: u } = await supabase.auth.getUser()
+        const nome = u.user?.user_metadata?.full_name as string | undefined
+        if (u.user && nome) setPeople([{ userId: u.user.id, nome }])
+      }
+      setLoading(false)
+    })()
+  }, [])
+
+  return { people, loading }
+}
+
 // ─── Accounts (contas e cartoes do household) ─────────────────────
-export type AccountInput = Pick<Account, 'instituicao' | 'apelido' | 'tipo' | 'final'>
+export type AccountInput = Pick<Account, 'instituicao' | 'apelido' | 'tipo' | 'final'> & { owner_user_id?: string | null }
 
 export function useAccounts() {
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -338,7 +370,7 @@ export function useAccounts() {
     if (!userId || !householdId) throw new Error('Not authenticated')
     const { error: err } = await supabase
       .from('accounts')
-      .insert({ ...a, owner_user_id: userId, household_id: householdId })
+      .insert({ ...a, owner_user_id: a.owner_user_id ?? userId, household_id: householdId })
     if (err) throw err
     await load()
   }

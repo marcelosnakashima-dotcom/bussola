@@ -54,7 +54,7 @@ Sua tarefa é analisar extratos e faturas de cartão e extrair/categorizar trans
 
 Regras:
 1. Extraia TODOS os lançamentos de débito (despesas) e crédito (receitas), sem pular nenhum.
-2. Ignore lançamentos de pagamento de fatura, saldo anterior, encargos genéricos do banco.
+2. Ignore apenas saldo anterior, saldo final e totais. Inclua pagamentos de fatura, "pagamento recebido" e transferências entre contas: o aplicativo decide depois o que é transferência.
 3. Limpe os nomes: "IFD*RESTAURANTE COZINH" → "Restaurante Cozinha". Remova códigos técnicos.
 4. Datas: use o formato YYYY-MM-DD. Se só houver dia/mês, use o ano do documento.
 5. Use as categorias fornecidas. Escolha a mais específica possível.
@@ -132,7 +132,9 @@ Deno.serve(async (req) => {
       const s = raw.indexOf("{"), e = raw.lastIndexOf("}");
       parsed = JSON.parse(raw.slice(s, e + 1));
     } catch {
-      return json({ error: "Resposta da IA não é um JSON válido", raw: raw.slice(0, 500) }, 502);
+      // Não devolver o texto da resposta: pode conter descrições de lançamentos do cliente.
+      console.error(JSON.stringify({ erro: "json_invalido", tamanho_resposta: raw.length }));
+      return json({ error: "Resposta da IA não é um JSON válido" }, 502);
     }
 
     const transacoes = (parsed.t ?? []).map((r: any[]) => {
