@@ -29,7 +29,8 @@ const CORS = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 
-const MODEL = "claude-haiku-4-5-20251001";
+// Mesmo modelo do parse-pdf, comprovadamente liberado neste workspace.
+const MODEL = "claude-sonnet-4-6";
 const MAX_ITEMS = 200;
 const MAX_DESC = 200;
 const MAX_TOKENS = 4000;
@@ -119,7 +120,7 @@ Deno.serve(async (req) => {
       tokens_usados: response.usage,
     });
   } catch (err) {
-    console.error("categorize-text erro:", (err as Error)?.message ?? err);
+    console.error("categorize-text erro:", JSON.stringify({ status: (err as { status?: number })?.status, message: (err as Error)?.message }));
     return json({ error: (err as Error)?.message ?? "Erro interno" }, 500);
   }
 });
