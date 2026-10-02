@@ -303,7 +303,7 @@ export function ImportPage() {
         const cat = id ? categories.find(c => c.id === id) : undefined
         return cat ? { categoria_id: cat.id, categoria_nome: cat.nome, confianca: 'alta' as const } : null
       }
-      const needAI = novas.filter(r => !fromHistory(r.descricao, r.tipo))
+      const needAI = novas.filter(r => r.tipo === 'despesa' && !fromHistory(r.descricao, r.tipo))
       let ai: Awaited<ReturnType<typeof categorizeTexts>> | null = null
       if (needAI.length > 0) {
         try {
@@ -328,7 +328,7 @@ export function ImportPage() {
           categoriaNome: cat?.categoria_nome ?? null,
           categoriaIdOriginal: cat?.categoria_id ?? null,
           categoriaNomeOriginal: cat?.categoria_nome ?? null,
-          confianca: cat?.confianca ?? 'revisar',
+          confianca: row.tipo === 'receita' ? 'alta' : (cat?.confianca ?? 'revisar'),
           justificativa: '',
           selected: !duplicate,
           corrected: false,
@@ -489,7 +489,9 @@ export function ImportPage() {
   }
 
   const selectedItems   = items.filter(i => i.selected)
-  const allCategorized  = selectedItems.every(i => i.transferKind || i.categoriaId)
+  // Categoria só é obrigatória para despesa: receita e transferência não entram no 50/30/20 por categoria
+  const needsCategory   = (i: ImportItem) => i.tipo === 'despesa' && !i.transferKind
+  const allCategorized  = selectedItems.every(i => !needsCategory(i) || i.categoriaId)
   const pendingAmbiguous = selectedItems.filter(i => !i.resolved).length
   const transferCount    = selectedItems.filter(i => i.transferKind).length
   const transferTotal    = selectedItems.filter(i => i.transferKind).reduce((s, i) => s + i.valor, 0)
@@ -497,7 +499,7 @@ export function ImportPage() {
     setItems(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i))
   const corrections     = items.filter(i => i.corrected && i.categoriaIdOriginal !== i.categoriaId)
   const totalSelected   = selectedItems.reduce((s, i) => s + i.valor, 0)
-  const needsReview     = items.filter(i => i.confianca === 'revisar' && !i.corrected).length
+  const needsReview     = items.filter(i => needsCategory(i) && i.confianca === 'revisar' && !i.corrected).length
 
   const confirm = async () => {
     if (!allCategorized || pendingAmbiguous > 0) return
@@ -826,7 +828,7 @@ export function ImportPage() {
                             className="border-b hover:bg-gray-50 transition-colors"
                             style={{
                               borderColor: 'var(--border)',
-                              borderLeft: item.confianca === 'revisar' && !item.corrected ? '3px solid #D97706' : '3px solid transparent',
+                              borderLeft: needsCategory(item) && item.confianca === 'revisar' && !item.corrected ? '3px solid #D97706' : '3px solid transparent',
                               opacity: item.selected ? 1 : 0.5,
                             }}>
                             <td className="px-3 py-2.5">
@@ -906,10 +908,10 @@ export function ImportPage() {
                             <td className="px-3 py-2.5">
                               {item.transferKind ? <span className="text-xs" style={{ color: 'var(--muted)' }}>—</span> : <select
                                 value={item.categoriaId ?? ''}
-                                className={`border rounded-lg px-2 py-1 text-xs outline-none max-w-[180px] ${!item.categoriaId ? 'border-amber-400 bg-amber-50' : ''}`}
-                                style={{ borderColor: item.categoriaId ? 'var(--border)' : '#F59E0B' }}
+                                className={`border rounded-lg px-2 py-1 text-xs outline-none max-w-[180px] ${!item.categoriaId && needsCategory(item) ? 'border-amber-400 bg-amber-50' : ''}`}
+                                style={{ borderColor: item.categoriaId || !needsCategory(item) ? 'var(--border)' : '#F59E0B' }}
                                 onChange={e => setCategory(item.id, e.target.value)}>
-                                <option value="">Selecione...</option>
+                                <option value="">{needsCategory(item) ? 'Selecione...' : 'Sem categoria'}</option>
                                 {categories.map(c => (
                                   <option key={c.id} value={c.id}>{c.nome}</option>
                                 ))}
