@@ -28,34 +28,69 @@ export function merchantKey(descricao: string): string {
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toUpperCase().replace(/[^A-Z0-9#]+/g, ' ').trim()
   for (let i = 0; i < 3; i++) n = n.replace(OP_PREFIX, '').trim()
-  return n.replace(/\b\d+\b/g, '').replace(/\s+/g, ' ').trim()
+  n = n.replace(/\b\d+\b/g, '').replace(/\s+/g, ' ').trim()
+  // Extratos truncam nomes e deixam uma letra solta no fim ("SOUSA F"): ignora-a
+  return n.replace(/(\s+[A-Z])+$/, '').trim()
 }
 
-export interface HistoryRow { descricao: string; tipo: string; categoria_id: string | null }
+export interface HistoryRow {
+  descricao: string
+  tipo: string
+  categoria_id: string | null
+  transfer_kind?: string | null
+  transfer_direction?: string | null
+}
 
-// Indice "estabelecimento -> categoria mais usada" a partir do historico do household.
-// Exige maioria clara (>= 60%) e ignora chaves vazias ou curtas demais.
+export type HistoryDecision =
+  | { categoriaId: string; transferKind?: undefined }
+  | { transferKind: 'entre_contas' | 'pagamento_fatura' | 'household'; categoriaId?: undefined }
+
+const TRANSFER_PREFIX = 'T:'
+
+// Indice "estabelecimento -> decisao mais usada" a partir do historico do household.
+// Aprende dois tipos de decisao do cliente: a categoria escolhida e a marcacao como
+// transferencia (com o tipo). Exige maioria clara (>= 60%) e ignora chaves curtas demais.
 export function buildHistoryIndex(rows: HistoryRow[]): Map<string, string> {
   const counts = new Map<string, Map<string, number>>()
-  for (const r of rows) {
-    if (!r.categoria_id || (r.tipo !== 'despesa' && r.tipo !== 'receita')) continue
-    const key = `${r.tipo}|${merchantKey(r.descricao)}`
-    if (key.length < 'despesa|'.length + 3) continue
+  const add = (tipo: string, descricao: string, value: string) => {
+    const key = `${tipo}|${merchantKey(descricao)}`
+    if (key.length < 'despesa|'.length + 3) return
     const m = counts.get(key) ?? new Map<string, number>()
-    m.set(r.categoria_id, (m.get(r.categoria_id) ?? 0) + 1)
+    m.set(value, (m.get(value) ?? 0) + 1)
     counts.set(key, m)
+  }
+  for (const r of rows) {
+    if (r.tipo === 'transferencia' && r.transfer_kind) {
+      // A direcao diz em qual lado aprender; sem ela (lancamentos antigos), nos dois.
+      const tipos = r.transfer_direction === 'saida' ? ['despesa']
+        : r.transfer_direction === 'entrada' ? ['receita'] : ['despesa', 'receita']
+      for (const t of tipos) add(t, r.descricao, TRANSFER_PREFIX + r.transfer_kind)
+    } else if (r.categoria_id && (r.tipo === 'despesa' || r.tipo === 'receita')) {
+      add(r.tipo, r.descricao, r.categoria_id)
+    }
   }
   const out = new Map<string, string>()
   for (const [key, m] of counts) {
     const total = [...m.values()].reduce((a, b) => a + b, 0)
-    const [cat, n] = [...m.entries()].sort((a, b) => b[1] - a[1])[0]
-    if (n / total >= 0.6) out.set(key, cat)
+    const [val, n] = [...m.entries()].sort((a, b) => b[1] - a[1])[0]
+    if (n / total >= 0.6) out.set(key, val)
   }
   return out
 }
 
+// Decisao aprendida para este estabelecimento: categoria OU transferencia.
+export function lookupDecision(index: Map<string, string>, descricao: string, tipo: string): HistoryDecision | null {
+  const v = index.get(`${tipo}|${merchantKey(descricao)}`)
+  if (!v) return null
+  if (v.startsWith(TRANSFER_PREFIX)) {
+    return { transferKind: v.slice(TRANSFER_PREFIX.length) as 'entre_contas' | 'pagamento_fatura' | 'household' }
+  }
+  return { categoriaId: v }
+}
+
+// Compatibilidade: so a categoria (null quando a decisao aprendida e transferencia).
 export function lookupHistory(index: Map<string, string>, descricao: string, tipo: string): string | null {
-  return index.get(`${tipo}|${merchantKey(descricao)}`) ?? null
+  return lookupDecision(index, descricao, tipo)?.categoriaId ?? null
 }
 
 export function chunk<T>(list: T[], size: number): T[][] {

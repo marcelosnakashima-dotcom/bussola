@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { maskForCategorization, merchantKey, buildHistoryIndex, lookupHistory, chunk, flagDuplicates, looksInverted } from './ofxImport'
+import { maskForCategorization, merchantKey, buildHistoryIndex, lookupHistory, lookupDecision, chunk, flagDuplicates, looksInverted } from './ofxImport'
 
 describe('maskForCategorization', () => {
   it('troca CPF, CNPJ e números longos, mantém os curtos', () => {
@@ -90,5 +90,39 @@ describe('histórico de categorias', () => {
     expect(lookupHistory(idx, 'Compra com Cartão - 20/03 18:00 PADARIA SOL', 'receita')).toBeNull()
     expect(lookupHistory(idx, 'Sem categoria', 'despesa')).toBeNull()
     expect(lookupHistory(idx, 'Transf', 'transferencia')).toBeNull()
+  })
+})
+
+describe('memória de transferências', () => {
+  const rows = [
+    // cliente marcou "Renda Fácil" como transferência entre contas nas duas pontas
+    { descricao: 'Aplicação Renda Fácil - 03/01 08:00 - Data balanc.: 03/01/2026', tipo: 'transferencia', categoria_id: null, transfer_kind: 'entre_contas', transfer_direction: 'saida' },
+    { descricao: 'Aplicação Renda Fácil - 10/01 08:00', tipo: 'transferencia', categoria_id: null, transfer_kind: 'entre_contas', transfer_direction: 'saida' },
+    { descricao: 'Resgate Renda Fácil', tipo: 'transferencia', categoria_id: null, transfer_kind: 'entre_contas', transfer_direction: 'entrada' },
+    // lançamento antigo sem direção vale para os dois lados
+    { descricao: 'Pix - Enviado - 02/01 14:31 MARIA EXEMPLO SOUSA F', tipo: 'transferencia', categoria_id: null, transfer_kind: 'household', transfer_direction: null },
+  ]
+  const idx = buildHistoryIndex(rows)
+  it('aprende a transferência na primeira marcação e reaplica nas próximas', () => {
+    expect(lookupDecision(idx, 'Aplicação Renda Fácil - 20/02 08:00 - Data balanc.: 20/02/2026', 'despesa'))
+      .toEqual({ transferKind: 'entre_contas' })
+  })
+  it('respeita a direção: aplicação (saída) não vale para entrada', () => {
+    expect(lookupDecision(idx, 'Aplicação Renda Fácil', 'receita')).toBeNull()
+    expect(lookupDecision(idx, 'Resgate Renda Fácil', 'receita')).toEqual({ transferKind: 'entre_contas' })
+  })
+  it('sem direção gravada, aprende nos dois lados', () => {
+    expect(lookupDecision(idx, 'Pix - Recebido - 05/03 10:00 MARIA EXEMPLO SOUSA', 'receita')).toEqual({ transferKind: 'household' })
+    expect(lookupDecision(idx, 'Pix - Enviado - 06/03 11:00 MARIA EXEMPLO SOUSA F', 'despesa')).toEqual({ transferKind: 'household' })
+  })
+  it('lookupHistory (só categoria) ignora decisões de transferência', () => {
+    expect(lookupHistory(idx, 'Aplicação Renda Fácil', 'despesa')).toBeNull()
+  })
+  it('categoria e transferência conflitantes sem maioria não decidem', () => {
+    const mix = buildHistoryIndex([
+      { descricao: 'Aplicação X', tipo: 'despesa', categoria_id: 'c-investimentos' },
+      { descricao: 'Aplicação X', tipo: 'transferencia', categoria_id: null, transfer_kind: 'entre_contas', transfer_direction: 'saida' },
+    ])
+    expect(lookupDecision(mix, 'Aplicação X', 'despesa')).toBeNull()
   })
 })
