@@ -734,7 +734,7 @@ export function ImportPage() {
               style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }} />
             <Sparkles className="w-6 h-6 absolute inset-0 m-auto" style={{ color: 'var(--brand)' }} />
           </div>
-          <p className="font-medium text-lg" style={{ color: 'var(--ink)' }}>Lendo seu PDF</p>
+          <p className="font-medium text-lg" style={{ color: 'var(--ink)' }}>Importando arquivo</p>
           <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
             Extraindo transações e categorizando automaticamente...
           </p>
@@ -804,7 +804,7 @@ export function ImportPage() {
               <AlertCircle className="w-12 h-12 mx-auto mb-3 text-amber-500" />
               <p className="font-medium mb-2" style={{ color: 'var(--ink)' }}>Nenhuma transação encontrada</p>
               <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
-                Não foi possível extrair dados deste PDF. Verifique se é um extrato ou fatura válida.
+                Não foi possível extrair dados deste arquivo. Verifique se é um extrato ou fatura válida.
               </p>
               <button onClick={reset} className="px-5 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: 'var(--brand)' }}>
                 Tentar outro arquivo
