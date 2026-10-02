@@ -7,7 +7,7 @@ import { formatBRL, formatDate, supabase } from '@/lib/supabase'
 import { Link } from '@tanstack/react-router'
 import { detectTransfers, type TransferKind, type DetectTx, PAIR_MAX_DAYS } from '@/lib/transferDetection'
 import { parseOfxBytes, ofxToRows, accountFinalMatches, type OfxStatement } from '@/lib/ofxParser'
-import { maskForCategorization, chunk, flagDuplicates, looksInverted } from '@/lib/ofxImport'
+import { maskForCategorization, buildHistoryIndex, lookupHistory, chunk, flagDuplicates, looksInverted } from '@/lib/ofxImport'
 
 type Step = 1 | 2 | 3 | 4
 
@@ -220,7 +220,9 @@ export function ImportPage() {
       unique.set(keyOf(d, r.tipo), { d, t: r.tipo === 'receita' ? 'r' : 'd' })
     }
     const result = new Map<string, { categoria_id: string | null; categoria_nome: string | null; confianca: ImportItem['confianca'] }>()
+    let firstError: string | null = null
     for (const part of chunk([...unique.entries()], 150)) {
+     try {
       const resp = await fetch(`${supaUrl}/functions/v1/categorize-text`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
@@ -232,8 +234,31 @@ export function ImportPage() {
       }
       const data = await resp.json()
       part.forEach(([k], i) => result.set(k, data.itens[i]))
+     } catch (err: any) {
+      // Um bloco que falha não derruba os outros
+      firstError = firstError ?? (err?.message ?? 'Erro desconhecido')
+     }
     }
-    return (descricao: string, tipo: string) => result.get(keyOf(maskForCategorization(descricao), tipo))
+    const lookup = (descricao: string, tipo: string) => result.get(keyOf(maskForCategorization(descricao), tipo))
+    return { lookup, error: firstError }
+  }
+
+  // Memória de categorias: o que o cliente já categorizou antes (mesmo estabelecimento)
+  const loadHistoryIndex = async () => {
+    try {
+      const { data, error: err } = await supabase
+        .from('transactions')
+        .select('descricao, tipo, categoria_id')
+        .not('categoria_id', 'is', null)
+        .in('tipo', ['despesa', 'receita'])
+        .order('data', { ascending: false })
+        .limit(3000)
+      if (err) throw err
+      return buildHistoryIndex(data ?? [])
+    } catch (err: any) {
+      logSystemError('import:history', err?.message ?? 'Erro desconhecido')
+      return new Map<string, string>()
+    }
   }
 
   // ── Importação de OFX (sem IA de leitura: o arquivo já é estruturado)
@@ -269,17 +294,30 @@ export function ImportPage() {
       const existing = await findExistingExternalIds(accountId, rows.map(r => r.externalId).filter((x): x is string => !!x))
       const flagged = flagDuplicates(rows, existing)
 
-      // Categorização só por texto: se falhar, segue sem categoria (o usuário escolhe)
-      let lookup: Awaited<ReturnType<typeof categorizeTexts>> | null = null
-      try {
-        lookup = await categorizeTexts(flagged.filter(f => !f.duplicate).map(f => f.row))
-      } catch (err: any) {
-        logSystemError('categorize-text', err.message ?? 'Erro desconhecido', file.name)
-        showToast('Não foi possível categorizar automaticamente. Escolha as categorias manualmente.', 'error')
+      // Categorização: 1) memória do que o cliente já categorou; 2) IA só por texto
+      // para o resto. Se a IA falhar, segue sem categoria (o usuário escolhe).
+      const history = await loadHistoryIndex()
+      const novas = flagged.filter(f => !f.duplicate).map(f => f.row)
+      const fromHistory = (descricao: string, tipo: string) => {
+        const id = lookupHistory(history, descricao, tipo)
+        const cat = id ? categories.find(c => c.id === id) : undefined
+        return cat ? { categoria_id: cat.id, categoria_nome: cat.nome, confianca: 'alta' as const } : null
       }
+      const needAI = novas.filter(r => !fromHistory(r.descricao, r.tipo))
+      let ai: Awaited<ReturnType<typeof categorizeTexts>> | null = null
+      if (needAI.length > 0) {
+        try {
+          ai = await categorizeTexts(needAI)
+          if (ai.error) throw new Error(ai.error)
+        } catch (err: any) {
+          logSystemError('categorize-text', err.message ?? 'Erro desconhecido', file.name)
+          showToast(`Não foi possível categorizar parte dos lançamentos automaticamente (${String(err.message ?? '').slice(0, 120)}). Escolha as categorias que faltam.`, 'error')
+        }
+      }
+      const lookup = (descricao: string, tipo: string) => fromHistory(descricao, tipo) ?? ai?.lookup(descricao, tipo) ?? null
 
       const built: ImportItem[] = flagged.map(({ row, duplicate, externalId }) => {
-        const cat = lookup?.(row.descricao, row.tipo)
+        const cat = lookup(row.descricao, row.tipo)
         return {
           id: crypto.randomUUID(),
           descricao: row.descricao,
