@@ -7,7 +7,7 @@ import { formatBRL, formatDate, supabase } from '@/lib/supabase'
 import { Link } from '@tanstack/react-router'
 import { detectTransfers, type TransferKind, type DetectTx, PAIR_MAX_DAYS } from '@/lib/transferDetection'
 import { parseOfxBytes, ofxToRows, accountFinalMatches, type OfxStatement } from '@/lib/ofxParser'
-import { maskForCategorization, buildHistoryIndex, lookupHistory, chunk, flagDuplicates, looksInverted } from '@/lib/ofxImport'
+import { maskForCategorization, buildHistoryIndex, lookupHistory, lookupDecision, chunk, flagDuplicates, looksInverted } from '@/lib/ofxImport'
 
 type Step = 1 | 2 | 3 | 4
 
@@ -89,6 +89,8 @@ export function ImportPage() {
   const [undoing, setUndoing]   = useState<string | null>(null)
   const [confirmUndo, setConfirmUndo] = useState<string | null>(null)
   // Lançamentos já gravados em OUTRAS contas do household, candidatos a par (regra 3)
+  // Memória do que o cliente já decidiu (categoria ou transferência) por estabelecimento
+  const historyRef = useRef<Map<string, string>>(new Map())
   const pairPool = useRef<Map<string, { tx: DetectTx; label: string }>>(new Map())
 
   // ── Converte File → base64
@@ -205,6 +207,14 @@ export function ImportPage() {
         pairedExistingId: d.pairId && pairPool.current.has(d.pairedWith ?? '') ? d.pairedWith : undefined,
         pairedLabel: d.pairedWith ? pairPool.current.get(d.pairedWith)?.label : undefined,
       }
+    }).map(i => {
+      // Sem detecção do motor: reaplica o que o cliente já decidiu antes para este estabelecimento
+      if (i.detStatus !== 'nenhuma') return i
+      const learned = lookupDecision(historyRef.current, i.descricao, i.tipo)
+      return learned?.transferKind
+        ? { ...i, transferKind: learned.transferKind, suggestedKind: learned.transferKind, detStatus: 'auto' as const,
+            motivo: 'Você já marcou lançamentos como este como transferência.', resolved: true }
+        : i
     })
   }
 
@@ -248,9 +258,9 @@ export function ImportPage() {
     try {
       const { data, error: err } = await supabase
         .from('transactions')
-        .select('descricao, tipo, categoria_id')
-        .not('categoria_id', 'is', null)
-        .in('tipo', ['despesa', 'receita'])
+        .select('descricao, tipo, categoria_id, transfer_kind, transfer_direction')
+        .or('categoria_id.not.is.null,transfer_kind.not.is.null')
+        .in('tipo', ['despesa', 'receita', 'transferencia'])
         .order('data', { ascending: false })
         .limit(3000)
       if (err) throw err
@@ -297,6 +307,7 @@ export function ImportPage() {
       // Categorização: 1) memória do que o cliente já categorou; 2) IA só por texto
       // para o resto. Se a IA falhar, segue sem categoria (o usuário escolhe).
       const history = await loadHistoryIndex()
+      historyRef.current = history
       const novas = flagged.filter(f => !f.duplicate).map(f => f.row)
       const fromHistory = (descricao: string, tipo: string) => {
         const id = lookupHistory(history, descricao, tipo)
@@ -409,6 +420,7 @@ export function ImportPage() {
       }))
 
       await loadPairPool(parsed, accountId)
+      historyRef.current = await loadHistoryIndex()
       setItems(applyDetection(parsed, accountId))
       setResult({
         fonte:          data.fonte,
