@@ -628,7 +628,7 @@ export function ImportPage() {
             : <>
                 <select value={accountChoice} onChange={e => setAccountChoice(e.target.value)}
                   className="w-full md:max-w-sm border rounded-xl px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }}>
-                  <option value="">{needsCategory(item) ? 'Selecione...' : 'Sem categoria'}</option>
+                  <option value="">Selecione...</option>
                   {activeAccounts.map(a => <option key={a.id} value={a.id}>{a.apelido} · {a.instituicao}</option>)}
                   <option value="none">Não informar (sem detecção de transferências)</option>
                 </select>
@@ -911,7 +911,7 @@ export function ImportPage() {
                                 className={`border rounded-lg px-2 py-1 text-xs outline-none max-w-[180px] ${!item.categoriaId && needsCategory(item) ? 'border-amber-400 bg-amber-50' : ''}`}
                                 style={{ borderColor: item.categoriaId || !needsCategory(item) ? 'var(--border)' : '#F59E0B' }}
                                 onChange={e => setCategory(item.id, e.target.value)}>
-                                <option value="">Selecione...</option>
+                                <option value="">{needsCategory(item) ? 'Selecione...' : 'Sem categoria'}</option>
                                 {categories.map(c => (
                                   <option key={c.id} value={c.id}>{c.nome}</option>
                                 ))}
