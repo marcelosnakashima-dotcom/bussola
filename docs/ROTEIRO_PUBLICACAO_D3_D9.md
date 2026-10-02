@@ -37,7 +37,8 @@ from pg_proc where proname in ('household_people','link_transfer_pair','unlink_t
 -- coluna nova e constraint
 select column_name, is_nullable from information_schema.columns
 where table_name = 'transactions' and column_name = 'transfer_direction';
-select conname from pg_constraint where conname = 'transactions_transfer_direction_check';
+select conname from pg_constraint where conname in ('transactions_transfer_direction_check','transactions_direction_only_transfers_check');
+-- devem aparecer as duas
 ```
 
 ### Rollback (se necessário)
@@ -47,8 +48,8 @@ drop function public.household_people();
 drop function public.link_transfer_pair(uuid, text, uuid);
 drop function public.unlink_transfer_pairs(uuid[], uuid);
 drop function public.undo_import_batch(uuid, boolean);
-alter table public.transactions drop constraint transactions_transfer_direction_check;
-alter table public.transactions drop column transfer_direction;
+alter table public.transactions drop constraint transactions_direction_only_transfers_check;
+alter table public.transactions drop column transfer_direction; -- remove também o check embutido
 ```
 
 Só faça o rollback das colunas se nenhuma transferência com direção já tiver sido gravada.
