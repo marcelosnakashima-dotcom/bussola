@@ -8,9 +8,12 @@ hoje estão como despesa/receita. Nada é gravado sem a sua aprovação, e tudo 
 
 ## Como funciona
 
-1. **Vincular lotes às contas.** Importações antigas gravaram os lançamentos e, segundos depois, o lote. O script liga
-   cada lote aos seus lançamentos pelo horário e confere se a contagem bate com `quantidade`. Lote que não bate é **pulado**.
-   Você diz a qual conta cada lote pertence.
+0. **Contas.** Sem contas cadastradas não há para onde vincular. Se o cliente ainda não as criou no app, o comando `contas`
+   cria a partir de uma lista (veja o passo a passo).
+1. **Vincular lotes às contas.** Importações antigas gravaram os lançamentos e, logo depois, o lote. O script liga cada lote
+   aos lançamentos gravados **entre o lote anterior e ele** (funciona mesmo em importações em massa) e confere se a contagem
+   bate com `quantidade`. Lote que não bate é **pulado**. Você diz a conta por **regra de fonte** (`fonte~TRECHO`), que vale
+   para todos os lotes cuja fonte contém o trecho, ou por id de lote.
 2. **Propor transferências.** O mesmo motor do app (`src/lib/transferDetection.ts`) roda sobre os lançamentos e gera uma lista.
    Itens certos vêm `aprovado: true`; ambíguos, `aprovado: false`. Você edita o arquivo.
 3. **Aplicar.** Simulação por padrão. Com `--confirmar`, grava o estado anterior em `private/` e só então altera.
@@ -53,14 +56,34 @@ export SUPABASE_URL="https://biipfchogxyzenyebtby.supabase.co"
 read -s "SUPABASE_SERVICE_ROLE_KEY?Chave de serviço: " && export SUPABASE_SERVICE_ROLE_KEY
 ```
 
+0. **Criar as contas** (só se o household ainda não tem). Rode `lotes` uma vez (passo 1) para ver as **fontes** e os **membros**
+   (`user_id`), e monte `private/contas-<id8>.json`:
+
+```json
+[
+  { "instituicao": "Banco do Brasil", "apelido": "BB Corrente", "tipo": "corrente", "final": "27517", "owner_user_id": "<user_id do titular>" },
+  { "instituicao": "Nubank", "apelido": "Nubank", "tipo": "corrente", "final": null, "owner_user_id": "<user_id do titular>" }
+]
+```
+
+```bash
+node scripts/d10/d10.mjs contas --household "<HOUSEHOLD_ID>" --arquivo private/contas-<id8>.json            # simulação
+node scripts/d10/d10.mjs contas --household "<HOUSEHOLD_ID>" --arquivo private/contas-<id8>.json --confirmar # cria
+```
+
+   O comando valida tipo, final (3 a 6 dígitos), titular do household e duplicidade. Rode `lotes` de novo para pegar os ids das contas criadas.
+
 1. **Lotes e contas:**
 
 ```bash
 node scripts/d10/d10.mjs lotes --household <HOUSEHOLD_ID>
 ```
 
-   Mostra as contas, os lotes sem conta e quantos lançamentos cada um encontrou (`exato: true` é o desejado), e cria
-   `private/d10-<id8>-mapeamento.json`. Abra o arquivo e troque cada `null` pelo id da conta do lote **ou do grupo** (ou deixe `null` para não vincular).
+   Mostra as contas, os membros, as **fontes** (lotes agrupados por origem, sem mês/ano), os lotes sem conta com quantos
+   lançamentos cada um encontrou (`exato: true` é o desejado) e os grupos sem lote. Cria `private/d10-<id8>-mapeamento.json`
+   com uma regra `fonte~...` por fonte e uma chave por grupo. Troque cada `null` pelo id da conta (ou deixe `null` para não
+   vincular). Pode encurtar o trecho (por exemplo `"fonte~27517"` pega todos os lotes cuja fonte contém 27517) e,
+   para exceções, usar o id de um lote como chave: o id vence a regra.
 
 2. **Proposta:**
 

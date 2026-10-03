@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  matchBatchTransactions, buildBatchReport, buildOrphanReport, buildAssignments, proposeTransfers, validateProposal, buildUpdates,
+  matchBatchTransactions, buildBatchReport, buildOrphanReport, buildAssignments, simplifyFonte, buildFonteReport, accountForBatch, proposeTransfers, validateProposal, buildUpdates,
 } from './plan.mjs'
 
 // Dados 100% sintéticos.
@@ -122,5 +122,58 @@ describe('grupos de lançamentos sem lote', () => {
     const { assigned } = buildAssignments([], orf, { 'pdf|2026-09-29': 'a1' })
     const { batchUpdates } = buildUpdates({ batches: [], assigned, itens: [] })
     expect(batchUpdates).toEqual([{ batchId: null, accountId: 'a1', txIds: ['p1', 'p2'] }])
+  })
+})
+
+describe('vínculo sequencial (importação em massa)', () => {
+  // Três lotes criados em sequência, em poucos minutos: cada lote fica logo depois dos seus lançamentos.
+  const at = sec => `2026-09-28T10:00:${String(sec).padStart(2, '0')}Z`
+  const lotes = [
+    { id: 'L1', user_id: U1, created_at: at(10), quantidade: 2, fonte: 'Nubank', account_id: null },
+    { id: 'L2', user_id: U1, created_at: at(20), quantidade: 3, fonte: 'Banco do Brasil – Conta 27517-4', account_id: null },
+    { id: 'L3', user_id: U1, created_at: at(30), quantidade: 1, fonte: 'Cartão XP', account_id: null },
+  ]
+  const txs = [
+    mk('a1', { created_at: at(1) }), mk('a2', { created_at: at(2) }),
+    mk('b1', { created_at: at(11) }), mk('b2', { created_at: at(12) }), mk('b3', { created_at: at(13) }),
+    mk('c1', { created_at: at(21) }),
+  ]
+  it('cada lote pega só o que foi gravado entre o lote anterior e ele (sem vazar para vizinhos)', () => {
+    expect(matchBatchTransactions(lotes[0], txs, lotes).map(t => t.id)).toEqual(['a1', 'a2'])
+    expect(matchBatchTransactions(lotes[1], txs, lotes).map(t => t.id)).toEqual(['b1', 'b2', 'b3'])
+    expect(matchBatchTransactions(lotes[2], txs, lotes).map(t => t.id)).toEqual(['c1'])
+    expect(buildBatchReport(lotes, txs).every(r => r.exato)).toBe(true)
+  })
+  it('lotes de outro usuário não cortam a sequência', () => {
+    const outros = [...lotes, { id: 'X', user_id: U2, created_at: at(11), quantidade: 0, fonte: 'Y', account_id: null }]
+    expect(matchBatchTransactions(lotes[1], txs, outros).map(t => t.id)).toEqual(['b1', 'b2', 'b3'])
+  })
+  it('lançamento sem lote correspondente (importação que falhou) quebra a contagem em vez de passar', () => {
+    const sobra = [...txs, mk('orfao', { created_at: at(15) })]
+    expect(buildBatchReport(lotes, sobra).find(r => r.id === 'L2')).toMatchObject({ encontrados: 4, exato: false })
+  })
+})
+
+describe('regras por fonte', () => {
+  const lotes = [
+    { id: 'L1', user_id: U1, created_at: '2026-09-28T10:00:10Z', quantidade: 1, fonte: 'Extrato BB Conta Corrente 01/2026', account_id: null },
+    { id: 'L2', user_id: U1, created_at: '2026-09-28T10:00:20Z', quantidade: 1, fonte: 'Banco do Brasil – Conta 27517-4', account_id: null },
+    { id: 'L3', user_id: U1, created_at: '2026-09-28T10:00:30Z', quantidade: 1, fonte: 'Fatura Santander Elite Mastercard 09/2026', account_id: null },
+  ]
+  it('simplifica a fonte: sem mês/ano, sem Extrato/Fatura, sem acento', () => {
+    expect(simplifyFonte('Fatura Santander Elite Mastercard 09/2026')).toBe('SANTANDER ELITE MASTERCARD')
+    expect(simplifyFonte('Banco do Brasil – Conta Corrente 27517-4')).toBe('BANCO DO BRASIL CONTA CORRENTE 27517 4')
+    expect(simplifyFonte('Caixa Econômica Federal')).toBe('CAIXA ECONOMICA FEDERAL')
+  })
+  it('relatório agrupa fontes iguais depois de simplificar', () => {
+    const r = buildFonteReport([...lotes, { ...lotes[2], id: 'L4', fonte: 'Fatura Santander Elite Mastercard 08/2026', quantidade: 4 }])
+    expect(r.find(x => x.fonte === 'SANTANDER ELITE MASTERCARD')).toEqual({ fonte: 'SANTANDER ELITE MASTERCARD', lotes: 2, lancamentos: 5 })
+  })
+  it('regra casa por trecho; id explícito vence; sem regra não vincula', () => {
+    const mapping = { 'fonte~27517': 'a-bb', 'fonte~santander': 'a-sant', 'L2': 'a-outra', 'fonte~vazio': null }
+    expect(accountForBatch(lotes[1], mapping)).toBe('a-outra')
+    expect(accountForBatch(lotes[2], mapping)).toBe('a-sant')
+    expect(accountForBatch(lotes[0], mapping)).toBeNull()
+    expect(accountForBatch(lotes[0], { 'fonte~extrato bb': 'a-bb' })).toBe('a-bb')
   })
 })

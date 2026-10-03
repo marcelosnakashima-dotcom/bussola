@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cmdLotes, cmdPropor, cmdAplicar, cmdReverter } from './commands.mjs'
+import { cmdLotes, cmdPropor, cmdAplicar, cmdContas, cmdReverter } from './commands.mjs'
 
 // Banco falso em memória, com as mesmas guardas do adaptador real.
 function fakeDb(seed) {
@@ -7,6 +7,11 @@ function fakeDb(seed) {
   const db = {
     state,
     async loadContext() { return structuredClone({ accounts: state.accounts, batches: state.batches, txs: state.txs, people: state.people }) },
+    async createAccounts(h, contas) {
+      const novas = contas.map((c, i) => ({ id: `novo-${state.accounts.length + i}`, ativo: true, ...c }))
+      state.accounts.push(...novas)
+      return novas
+    },
     async linkTransactions(h, ids, { accountId, batchId }) {
       let n = 0
       for (const t of state.txs) if (ids.includes(t.id) && !t.account_id && !t.import_batch_id) { t.account_id = accountId; t.import_batch_id = batchId; n++ }
@@ -174,5 +179,29 @@ describe('grupos sem lote (aplicar e reverter)', () => {
 
   it('rejeita conta de outro household num grupo', async () => {
     await expect(cmdPropor({ db: fakeDb(semLote), household: H, mapping: { 'pdf|2026-09-29': 'conta-alheia' } })).rejects.toThrow(/não pertence/)
+  })
+})
+
+describe('criar contas', () => {
+  const lista = [
+    { instituicao: 'Banco Gama', apelido: 'Conta Gama', tipo: 'corrente', final: '5555', owner_user_id: 'u1' },
+    { instituicao: 'Cartão Delta', apelido: 'Delta', tipo: 'cartao', final: null, owner_user_id: 'u1' },
+  ]
+  it('simula por padrão e só grava com confirmar', async () => {
+    const db = fakeDb(seed)
+    expect(await cmdContas({ db, household: H, contas: lista })).toEqual({ gravado: false, criar: 2 })
+    expect(db.state.accounts).toHaveLength(2)
+    const r = await cmdContas({ db, household: H, contas: lista, confirmar: true })
+    expect(r.gravado).toBe(true)
+    expect(db.state.accounts).toHaveLength(4)
+  })
+  it('valida tipo, final, dono do household e duplicidade, sem gravar nada', async () => {
+    const db = fakeDb(seed)
+    const ruim = [
+      { instituicao: '', apelido: 'x', tipo: 'conta', final: '12', owner_user_id: 'estranho' },
+      { instituicao: 'Banco Alfa', apelido: 'Corrente', tipo: 'corrente', owner_user_id: 'u1' },
+    ]
+    await expect(cmdContas({ db, household: H, contas: ruim, confirmar: true })).rejects.toThrow(/instituicao obrigatória[\s\S]*tipo deve ser[\s\S]*3 a 6 dígitos[\s\S]*membro do household[\s\S]*já existe/)
+    expect(db.state.accounts).toHaveLength(2)
   })
 })

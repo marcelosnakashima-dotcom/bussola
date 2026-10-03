@@ -36,6 +36,9 @@ export function createSupabaseDb({ url, serviceKey }) {
         txs: await loadAll('transactions', TX_COLS, householdId),
       }
     },
+    async createAccounts(householdId, contas) {
+      return must(await sb.from('accounts').insert(contas.map(c => ({ ...c, household_id: householdId }))).select('id,apelido'), 'criar contas')
+    },
     async linkTransactions(householdId, ids, { accountId, batchId }) {
       let n = 0
       for (let i = 0; i < ids.length; i += 200) {
