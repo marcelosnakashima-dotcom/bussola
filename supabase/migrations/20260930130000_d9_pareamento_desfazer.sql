@@ -5,8 +5,8 @@
 --   drop function public.link_transfer_pair(uuid, text, uuid);
 --   drop function public.unlink_transfer_pairs(uuid[], uuid);
 --   drop function public.undo_import_batch(uuid, boolean);
---   alter table public.transactions drop constraint transactions_transfer_direction_check;
---   alter table public.transactions drop column transfer_direction;
+--   alter table public.transactions drop constraint transactions_direction_only_transfers_check;
+--   alter table public.transactions drop column transfer_direction;  -- remove também o check embutido
 --
 -- Por que esta coluna: 'transferencia' não guarda se o dinheiro saiu ou entrou
 -- (valor é sempre positivo). Sem a direção não dá para devolver um lançamento
@@ -21,11 +21,15 @@
 begin;
 
 alter table public.transactions
-  add column transfer_direction text
+  add column if not exists transfer_direction text
   check (transfer_direction is null or transfer_direction in ('saida','entrada'));
 
+-- Nome diferente do check embutido acima (que o Postgres nomeia
+-- transactions_transfer_direction_check): reutilizar o nome causa erro 42710.
 alter table public.transactions
-  add constraint transactions_transfer_direction_check
+  drop constraint if exists transactions_direction_only_transfers_check;
+alter table public.transactions
+  add constraint transactions_direction_only_transfers_check
   check (transfer_direction is null or tipo = 'transferencia');
 
 -- Converte um lançamento já gravado (despesa/receita) em ponta de transferência.
