@@ -14,6 +14,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { createSupabaseDb } from './supabase-db.mjs'
+import { suggestAccount } from './plan.mjs'
 import { cmdLotes, cmdPropor, cmdAplicar, cmdContas, cmdReverter } from './commands.mjs'
 
 const [, , command, ...rest] = process.argv
@@ -52,7 +53,12 @@ try {
     console.log('GRUPOS SEM LOTE (lançamentos sem conta e sem lote; a chave vai no arquivo de mapeamento)')
     console.table(r.grupos)
     console.log(`Lançamentos sem conta: ${r.totalSemConta}`)
-    const modelo = Object.fromEntries([...r.fontes.map(f => [`fonte~${f.fonte}`, null]), ...r.grupos.map(g => [g.chave, null])])
+    const modelo = Object.fromEntries([
+      ...r.fontes.map(f => [`fonte~${f.fonte}`, suggestAccount(f.fonte, r.contas)]),
+      ...r.grupos.map(g => [g.chave, null]),
+    ])
+    const sugeridas = Object.values(modelo).filter(Boolean).length
+    if (r.contas.length) console.log(`Mapeamento sugerido automaticamente para ${sugeridas} de ${r.fontes.length} fontes (só o que é inequívoco). Revise o arquivo.`)
     writeJson(`private/d10-${tag}-mapeamento.json`, modelo)
     console.log('Preencha o arquivo com o id da conta de cada lote ou grupo (null = não vincular) e rode "propor".')
   }
