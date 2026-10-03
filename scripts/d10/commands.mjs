@@ -11,7 +11,7 @@
 // }
 
 import {
-  buildBatchReport, buildAssignments, proposeTransfers, validateProposal, buildUpdates,
+  buildBatchReport, buildOrphanReport, isGroupKey, buildAssignments, proposeTransfers, validateProposal, buildUpdates,
 } from './plan.mjs'
 
 export async function cmdLotes({ db, household }) {
@@ -19,6 +19,7 @@ export async function cmdLotes({ db, household }) {
   return {
     contas: ctx.accounts.map(a => ({ id: a.id, apelido: a.apelido, instituicao: a.instituicao, tipo: a.tipo, final: a.final, ativo: a.ativo })),
     lotes: buildBatchReport(ctx.batches, ctx.txs),
+    grupos: buildOrphanReport(ctx.txs),
     totalSemConta: ctx.txs.filter(t => !t.account_id).length,
   }
 }
@@ -36,7 +37,7 @@ function validateMapping(mapping, ctx) {
   const accountIds = new Set(ctx.accounts.map(a => a.id))
   for (const [b, a] of Object.entries(mapping)) {
     if (!a) continue
-    if (!batchIds.has(b)) throw new Error(`Lote ${b} não pertence a este household.`)
+    if (!isGroupKey(b) && !batchIds.has(b)) throw new Error(`Lote ${b} não pertence a este household.`)
     if (!accountIds.has(a)) throw new Error(`Conta ${a} não pertence a este household.`)
   }
 }
@@ -60,7 +61,8 @@ export async function cmdAplicar({ db, household, mapping, proposta, confirmar =
   const { batchUpdates, transferUpdates } = buildUpdates({ batches: ctx.batches, assigned, itens: proposta.itens })
 
   const resumo = {
-    lotes: batchUpdates.length,
+    lotes: batchUpdates.filter(b => b.batchId).length,
+    gruposSemLote: batchUpdates.filter(b => !b.batchId).length,
     lancamentosVinculados: batchUpdates.reduce((s, b) => s + b.txIds.length, 0),
     transferencias: transferUpdates.length,
     lotesPulados: skipped,
@@ -80,7 +82,7 @@ export async function cmdAplicar({ db, household, mapping, proposta, confirmar =
         transfer_direction: t.transfer_direction ?? null,
       }
     }),
-    lotes: batchUpdates.map(b => {
+    lotes: batchUpdates.filter(b => b.batchId).map(b => {
       const lote = ctx.batches.find(x => x.id === b.batchId)
       return { id: b.batchId, account_id: lote.account_id ?? null, formato: lote.formato ?? null }
     }),
@@ -90,8 +92,8 @@ export async function cmdAplicar({ db, household, mapping, proposta, confirmar =
   const falhas = []
   for (const b of batchUpdates) {
     const n = await db.linkTransactions(household, b.txIds, { accountId: b.accountId, batchId: b.batchId })
-    if (n !== b.txIds.length) falhas.push(`Lote ${b.batchId}: ${n} de ${b.txIds.length} lançamentos vinculados (o restante já mudou).`)
-    await db.linkBatch(household, b.batchId, b.accountId)
+    if (n !== b.txIds.length) falhas.push(`${b.batchId ? `Lote ${b.batchId}` : 'Grupo sem lote'}: ${n} de ${b.txIds.length} lançamentos vinculados (o restante já mudou).`)
+    if (b.batchId) await db.linkBatch(household, b.batchId, b.accountId)
   }
   let aplicadas = 0
   for (const t of transferUpdates) {

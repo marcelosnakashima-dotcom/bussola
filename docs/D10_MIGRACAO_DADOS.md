@@ -16,7 +16,9 @@ hoje estão como despesa/receita. Nada é gravado sem a sua aprovação, e tudo 
 3. **Aplicar.** Simulação por padrão. Com `--confirmar`, grava o estado anterior em `private/` e só então altera.
 4. **Reverter.** Restaura exatamente o estado anterior a partir desse arquivo.
 
-Lançamentos manuais ou sem lote correspondente **não** são tocados no passo 1 (ficam sem conta; o cliente pode editar depois).
+Lançamentos **sem lote** (importações manuais antigas) aparecem em **GRUPOS SEM LOTE**, agrupados por origem e dia da gravação
+(`pdf|2026-09-29`; os lançamentos manuais ficam juntos em `manual|*`). Você mapeia cada grupo a uma conta, olhando a
+quantidade e o período das datas; esses vínculos guardam só a conta, sem lote. Grupo com `null` não é tocado.
 
 ## Pré-requisitos
 
@@ -58,7 +60,7 @@ node scripts/d10/d10.mjs lotes --household <HOUSEHOLD_ID>
 ```
 
    Mostra as contas, os lotes sem conta e quantos lançamentos cada um encontrou (`exato: true` é o desejado), e cria
-   `private/d10-<id8>-mapeamento.json`. Abra o arquivo e troque cada `null` pelo id da conta do lote (ou deixe `null` para não vincular).
+   `private/d10-<id8>-mapeamento.json`. Abra o arquivo e troque cada `null` pelo id da conta do lote **ou do grupo** (ou deixe `null` para não vincular).
 
 2. **Proposta:**
 

@@ -140,3 +140,39 @@ describe('aplicar e reverter', () => {
     expect(db.state.txs.find(t => t.id === 't1').account_id).toBeNull()
   })
 })
+
+describe('grupos sem lote (aplicar e reverter)', () => {
+  const semLote = {
+    ...seed,
+    batches: [],
+    txs: [
+      tx('o1', { descricao: 'COMPRA A', created_at: '2026-09-29T10:00:00Z' }),
+      tx('o2', { descricao: 'COMPRA B', created_at: '2026-09-29T10:00:09Z' }),
+      tx('o3', { descricao: 'COMPRA C', created_at: '2026-09-30T10:00:00Z' }),
+    ],
+  }
+  const mapping = { 'pdf|2026-09-29': 'a-corr' }
+
+  it('lotes lista os grupos para mapeamento', async () => {
+    const r = await cmdLotes({ db: fakeDb(semLote), household: H })
+    expect(r.lotes).toEqual([])
+    expect(r.grupos.map(g => [g.chave, g.quantidade])).toEqual([['pdf|2026-09-29', 2], ['pdf|2026-09-30', 1]])
+  })
+
+  it('vincula só a conta do grupo mapeado, sem criar lote, e reverte', async () => {
+    const db = fakeDb(semLote)
+    let antes
+    const r = await cmdAplicar({ db, household: H, mapping, proposta: { household: H, itens: [] }, confirmar: true, onBefore: async a => { antes = a } })
+    expect(r).toMatchObject({ gravado: true, lotes: 0, gruposSemLote: 1, lancamentosVinculados: 2, falhas: [] })
+    expect(db.state.txs.map(t => [t.id, t.account_id, t.import_batch_id])).toEqual([
+      ['o1', 'a-corr', null], ['o2', 'a-corr', null], ['o3', null, null],
+    ])
+    expect(antes.lotes).toEqual([])
+    await cmdReverter({ db, household: H, antes })
+    expect(db.state.txs).toEqual(semLote.txs)
+  })
+
+  it('rejeita conta de outro household num grupo', async () => {
+    await expect(cmdPropor({ db: fakeDb(semLote), household: H, mapping: { 'pdf|2026-09-29': 'conta-alheia' } })).rejects.toThrow(/não pertence/)
+  })
+})

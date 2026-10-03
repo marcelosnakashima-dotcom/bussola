@@ -32,6 +32,29 @@ export function buildBatchReport(batches, txs) {
     })
 }
 
+// Lançamentos sem conta e sem lote (importações manuais antigas): agrupados para você mapear.
+// Chave: "origem|dia da gravação" (lançamentos manuais ficam todos em "manual|*").
+export const GROUP_SEP = '|'
+export function groupKey(t) {
+  return t.origem === 'manual' ? 'manual|*' : `${t.origem}|${String(t.created_at).slice(0, 10)}`
+}
+export const isGroupKey = k => k.includes(GROUP_SEP)
+
+export function buildOrphanReport(txs) {
+  const groups = new Map()
+  for (const t of txs.filter(x => !x.account_id && !x.import_batch_id)) {
+    const k = groupKey(t)
+    const g = groups.get(k) ?? { chave: k, origem: t.origem, quantidade: 0, data_min: t.data, data_max: t.data, despesas: 0, receitas: 0 }
+    g.quantidade++
+    g.data_min = t.data < g.data_min ? t.data : g.data_min
+    g.data_max = t.data > g.data_max ? t.data : g.data_max
+    if (t.tipo === 'despesa') g.despesas++
+    if (t.tipo === 'receita') g.receitas++
+    groups.set(k, g)
+  }
+  return [...groups.values()].sort((a, b) => a.chave.localeCompare(b.chave))
+}
+
 // Atribuição lançamento -> conta, só para lotes mapeados e com contagem exata.
 // mapping: { [batchId]: accountId }
 export function buildAssignments(batches, txs, mapping) {
@@ -39,7 +62,7 @@ export function buildAssignments(batches, txs, mapping) {
   const skipped = []
   for (const b of batches) {
     const accountId = mapping[b.id]
-    if (!accountId) continue
+    if (!accountId || isGroupKey(b.id)) continue
     const matched = matchBatchTransactions(b, txs)
     if (matched.length !== b.quantidade) {
       skipped.push({ batchId: b.id, motivo: `esperado ${b.quantidade}, encontrado ${matched.length}` })
@@ -47,6 +70,15 @@ export function buildAssignments(batches, txs, mapping) {
     }
     for (const t of matched) {
       if (!assigned.has(t.id)) assigned.set(t.id, { accountId, batchId: b.id })
+    }
+  }
+  // Grupos de órfãos (sem lote): vinculam só a conta, nunca um lote.
+  for (const [key, accountId] of Object.entries(mapping)) {
+    if (!accountId || !isGroupKey(key)) continue
+    for (const t of txs) {
+      if (!t.account_id && !t.import_batch_id && groupKey(t) === key && !assigned.has(t.id)) {
+        assigned.set(t.id, { accountId, batchId: null })
+      }
     }
   }
   return { assigned, skipped }
@@ -109,13 +141,16 @@ export const directionOf = tipo => (tipo === 'despesa' ? 'saida' : 'entrada')
 export function buildUpdates({ batches, assigned, itens }) {
   const batchUpdates = []
   const perBatch = new Map()
+  const perAccount = new Map() // lançamentos sem lote, por conta
   for (const [txId, a] of assigned) {
-    perBatch.set(a.batchId, [...(perBatch.get(a.batchId) ?? []), txId])
+    if (a.batchId) perBatch.set(a.batchId, [...(perBatch.get(a.batchId) ?? []), txId])
+    else perAccount.set(a.accountId, [...(perAccount.get(a.accountId) ?? []), txId])
   }
   for (const b of batches) {
     const ids = perBatch.get(b.id)
     if (ids) batchUpdates.push({ batchId: b.id, accountId: assigned.get(ids[0]).accountId, txIds: ids })
   }
+  for (const [accountId, txIds] of perAccount) batchUpdates.push({ batchId: null, accountId, txIds })
   const transferUpdates = itens
     .filter(i => i.aprovado)
     .map(i => ({

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  matchBatchTransactions, buildBatchReport, buildAssignments, proposeTransfers, validateProposal, buildUpdates,
+  matchBatchTransactions, buildBatchReport, buildOrphanReport, buildAssignments, proposeTransfers, validateProposal, buildUpdates,
 } from './plan.mjs'
 
 // Dados 100% sintéticos.
@@ -93,5 +93,34 @@ describe('proposta de transferências', () => {
     const assigned = new Map([['t1', { accountId: 'a1', batchId: 'b1' }], ['t2', { accountId: 'a1', batchId: 'b1' }]])
     const { batchUpdates } = buildUpdates({ batches: [batch], assigned, itens: [] })
     expect(batchUpdates).toEqual([{ batchId: 'b1', accountId: 'a1', txIds: ['t1', 't2'] }])
+  })
+})
+
+describe('grupos de lançamentos sem lote', () => {
+  const orf = [
+    mk('p1', { created_at: '2026-09-29T10:00:00Z', data: '2026-09-01' }),
+    mk('p2', { created_at: '2026-09-29T10:00:05Z', data: '2026-09-20', tipo: 'receita' }),
+    mk('p3', { created_at: '2026-09-30T08:00:00Z' }),
+    mk('m1', { origem: 'manual', created_at: '2026-09-25T10:00:00Z' }),
+    mk('m2', { origem: 'manual', created_at: '2026-10-01T10:00:00Z' }),
+    mk('com-conta', { account_id: 'a1', created_at: '2026-09-29T10:00:00Z' }),
+    mk('com-lote', { import_batch_id: 'b9', created_at: '2026-09-29T10:00:00Z' }),
+  ]
+  it('agrupa por origem e dia da gravação; manuais ficam juntos; ignora quem já tem conta ou lote', () => {
+    expect(buildOrphanReport(orf)).toEqual([
+      { chave: 'manual|*', origem: 'manual', quantidade: 2, data_min: '2026-09-10', data_max: '2026-09-10', despesas: 2, receitas: 0 },
+      { chave: 'pdf|2026-09-29', origem: 'pdf', quantidade: 2, data_min: '2026-09-01', data_max: '2026-09-20', despesas: 1, receitas: 1 },
+      { chave: 'pdf|2026-09-30', origem: 'pdf', quantidade: 1, data_min: '2026-09-10', data_max: '2026-09-10', despesas: 1, receitas: 0 },
+    ])
+  })
+  it('mapear um grupo atribui só a conta, sem lote', () => {
+    const { assigned } = buildAssignments([], orf, { 'pdf|2026-09-29': 'a1', 'pdf|2026-09-30': null })
+    expect([...assigned.keys()].sort()).toEqual(['p1', 'p2'])
+    expect(assigned.get('p1')).toEqual({ accountId: 'a1', batchId: null })
+  })
+  it('updates agrupam por conta com batchId nulo', () => {
+    const { assigned } = buildAssignments([], orf, { 'pdf|2026-09-29': 'a1' })
+    const { batchUpdates } = buildUpdates({ batches: [], assigned, itens: [] })
+    expect(batchUpdates).toEqual([{ batchId: null, accountId: 'a1', txIds: ['p1', 'p2'] }])
   })
 })
