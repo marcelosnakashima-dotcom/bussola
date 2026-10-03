@@ -11,7 +11,7 @@
 // }
 
 import {
-  buildBatchReport, buildOrphanReport, isGroupKey, buildAssignments, proposeTransfers, validateProposal, buildUpdates,
+  buildBatchReport, buildOrphanReport, buildFonteReport, isGroupKey, isFonteKey, buildAssignments, proposeTransfers, validateProposal, buildUpdates,
 } from './plan.mjs'
 
 export async function cmdLotes({ db, household }) {
@@ -20,6 +20,8 @@ export async function cmdLotes({ db, household }) {
     contas: ctx.accounts.map(a => ({ id: a.id, apelido: a.apelido, instituicao: a.instituicao, tipo: a.tipo, final: a.final, ativo: a.ativo })),
     lotes: buildBatchReport(ctx.batches, ctx.txs),
     grupos: buildOrphanReport(ctx.txs),
+    fontes: buildFonteReport(ctx.batches),
+    membros: ctx.people,
     totalSemConta: ctx.txs.filter(t => !t.account_id).length,
   }
 }
@@ -37,7 +39,7 @@ function validateMapping(mapping, ctx) {
   const accountIds = new Set(ctx.accounts.map(a => a.id))
   for (const [b, a] of Object.entries(mapping)) {
     if (!a) continue
-    if (!isGroupKey(b) && !batchIds.has(b)) throw new Error(`Lote ${b} não pertence a este household.`)
+    if (!isGroupKey(b) && !isFonteKey(b) && !batchIds.has(b)) throw new Error(`Lote ${b} não pertence a este household.`)
     if (!accountIds.has(a)) throw new Error(`Conta ${a} não pertence a este household.`)
   }
 }
@@ -102,6 +104,33 @@ export async function cmdAplicar({ db, household, mapping, proposta, confirmar =
     else falhas.push(`Lançamento ${t.id}: não alterado (tipo atual diferente do esperado).`)
   }
   return { ...resumo, gravado: true, transferenciasAplicadas: aplicadas, falhas }
+}
+
+// Cria contas do household a partir de uma lista. Simulação por padrão.
+const TIPOS = ['corrente', 'poupanca', 'investimento', 'cartao', 'outro']
+export async function cmdContas({ db, household, contas, confirmar = false }) {
+  const ctx = await db.loadContext(household)
+  const donos = new Set(ctx.people.map(p => p.userId))
+  const erros = []
+  contas.forEach((c, i) => {
+    const n = `Conta ${i + 1}`
+    if (!c.instituicao || !String(c.instituicao).trim()) erros.push(`${n}: instituicao obrigatória.`)
+    if (!c.apelido || !String(c.apelido).trim()) erros.push(`${n}: apelido obrigatório.`)
+    if (!TIPOS.includes(c.tipo)) erros.push(`${n}: tipo deve ser ${TIPOS.join(', ')}.`)
+    if (c.final != null && !/^[0-9]{3,6}$/.test(String(c.final))) erros.push(`${n}: final deve ter de 3 a 6 dígitos.`)
+    if (!c.owner_user_id || !donos.has(c.owner_user_id)) erros.push(`${n}: owner_user_id deve ser um membro do household.`)
+  })
+  const existentes = new Set(ctx.accounts.map(a => `${String(a.instituicao).toUpperCase()}|${String(a.apelido).toUpperCase()}`))
+  contas.forEach((c, i) => {
+    if (existentes.has(`${String(c.instituicao).toUpperCase()}|${String(c.apelido).toUpperCase()}`)) erros.push(`Conta ${i + 1}: já existe uma conta com esta instituição e apelido.`)
+  })
+  if (erros.length) throw new Error(`Lista de contas inválida:\n- ${erros.join('\n- ')}`)
+  if (!confirmar) return { gravado: false, criar: contas.length }
+  const criadas = await db.createAccounts(household, contas.map(c => ({
+    instituicao: String(c.instituicao).trim(), apelido: String(c.apelido).trim(), tipo: c.tipo,
+    final: c.final == null ? null : String(c.final), owner_user_id: c.owner_user_id,
+  })))
+  return { gravado: true, criadas: criadas.map(a => ({ id: a.id, apelido: a.apelido })) }
 }
 
 export async function cmdReverter({ db, household, antes }) {

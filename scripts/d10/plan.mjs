@@ -4,19 +4,59 @@
 
 import { detectTransfers } from '../../src/lib/transferDetection.ts'
 
-// Antes do D6 o app gravava os lançamentos e, em seguida, o lote (segundos depois).
-export const WINDOW_BEFORE_MS = 10 * 60 * 1000
-export const WINDOW_AFTER_MS = 60 * 1000
+// Antes do D6 o app gravava os lançamentos e, imediatamente depois, o lote. Logo, os lançamentos
+// de um lote são os gravados ENTRE o lote anterior (do mesmo usuário) e este. Esse corte sequencial
+// funciona mesmo em importações em massa, em que vários lotes foram criados em poucos minutos.
+// Para o primeiro lote de um usuário, olha no máximo LOOKBACK_MS para trás.
+export const LOOKBACK_MS = 10 * 60 * 1000
 
 // Lançamentos de importação antiga (PDF) sem conta e sem lote que pertencem a este lote.
-export function matchBatchTransactions(batch, txs) {
-  const t0 = new Date(batch.created_at).getTime()
-  return txs.filter(t =>
-    t.origem === 'pdf' &&
-    !t.account_id && !t.import_batch_id &&
-    t.user_id === batch.user_id &&
-    new Date(t.created_at).getTime() >= t0 - WINDOW_BEFORE_MS &&
-    new Date(t.created_at).getTime() <= t0 + WINDOW_AFTER_MS)
+export function matchBatchTransactions(batch, txs, batches = [batch]) {
+  const t1 = new Date(batch.created_at).getTime()
+  const prev = batches
+    .filter(b => b.user_id === batch.user_id && new Date(b.created_at).getTime() < t1)
+    .reduce((m, b) => Math.max(m, new Date(b.created_at).getTime()), -Infinity)
+  const t0 = Math.max(prev, t1 - LOOKBACK_MS)
+  return txs.filter(t => {
+    const c = new Date(t.created_at).getTime()
+    return t.origem === 'pdf' && !t.account_id && !t.import_batch_id &&
+      t.user_id === batch.user_id && c > t0 && c <= t1
+  })
+}
+
+// Texto para comparar fontes: sem acento, caixa alta, sem pontuação.
+export const normText = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim()
+
+// Fonte "simplificada": sem mês/ano e sem as palavras EXTRATO/FATURA, para agrupar lotes do mesmo lugar.
+export const simplifyFonte = s => normText(String(s ?? '').replace(/\b\d{1,2}\/\d{4}\b/g, ' '))
+  .replace(/\b(EXTRATO|FATURA)\b/g, ' ').replace(/\s+/g, ' ').trim()
+
+export const FONTE_PREFIX = 'fonte~'
+export const isFonteKey = k => k.startsWith(FONTE_PREFIX)
+
+// Fontes distintas (simplificadas) com quantos lotes e lançamentos cada uma tem.
+export function buildFonteReport(batches) {
+  const m = new Map()
+  for (const b of batches.filter(x => !x.account_id)) {
+    const k = simplifyFonte(b.fonte)
+    const g = m.get(k) ?? { fonte: k, lotes: 0, lancamentos: 0 }
+    g.lotes++; g.lancamentos += Number(b.quantidade) || 0
+    m.set(k, g)
+  }
+  return [...m.values()].sort((a, b) => a.fonte.localeCompare(b.fonte))
+}
+
+// Conta para um lote: o mapeamento explícito por id vence; depois, a primeira regra "fonte~..." que casar.
+export function accountForBatch(batch, mapping) {
+  if (mapping[batch.id]) return mapping[batch.id]
+  const f = normText(batch.fonte)
+  for (const [key, acct] of Object.entries(mapping)) {
+    if (!acct || !isFonteKey(key)) continue
+    const needle = normText(key.slice(FONTE_PREFIX.length))
+    if (needle && f.includes(needle)) return acct
+  }
+  return null
 }
 
 // Lotes sem conta, com quantos lançamentos o vínculo por horário encontraria.
@@ -24,7 +64,7 @@ export function buildBatchReport(batches, txs) {
   return batches
     .filter(b => !b.account_id)
     .map(b => {
-      const matched = matchBatchTransactions(b, txs).length
+      const matched = matchBatchTransactions(b, txs, batches).length
       return {
         id: b.id, fonte: b.fonte, periodo_inicio: b.periodo_inicio, periodo_fim: b.periodo_fim,
         quantidade: b.quantidade, encontrados: matched, exato: matched === b.quantidade,
@@ -61,9 +101,9 @@ export function buildAssignments(batches, txs, mapping) {
   const assigned = new Map() // txId -> { accountId, batchId }
   const skipped = []
   for (const b of batches) {
-    const accountId = mapping[b.id]
-    if (!accountId || isGroupKey(b.id)) continue
-    const matched = matchBatchTransactions(b, txs)
+    const accountId = accountForBatch(b, mapping)
+    if (!accountId) continue
+    const matched = matchBatchTransactions(b, txs, batches)
     if (matched.length !== b.quantidade) {
       skipped.push({ batchId: b.id, motivo: `esperado ${b.quantidade}, encontrado ${matched.length}` })
       continue
