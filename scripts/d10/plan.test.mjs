@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  matchBatchTransactions, buildBatchReport, buildOrphanReport, buildAssignments, simplifyFonte, buildFonteReport, accountForBatch, proposeTransfers, validateProposal, buildUpdates,
+  matchBatchTransactions, buildBatchReport, buildOrphanReport, buildAssignments, simplifyFonte, buildFonteReport, accountForBatch, suggestAccount, proposeTransfers, validateProposal, buildUpdates,
 } from './plan.mjs'
 
 // Dados 100% sintéticos.
@@ -175,5 +175,34 @@ describe('regras por fonte', () => {
     expect(accountForBatch(lotes[2], mapping)).toBe('a-sant')
     expect(accountForBatch(lotes[0], mapping)).toBeNull()
     expect(accountForBatch(lotes[0], { 'fonte~extrato bb': 'a-bb' })).toBe('a-bb')
+  })
+})
+
+describe('sugestão de conta por fonte', () => {
+  const contas = [
+    { id: 'bb-cc', instituicao: 'Banco do Brasil', apelido: 'BB Corrente', tipo: 'corrente', final: '27517', ativo: true },
+    { id: 'bb-0469', instituicao: 'Banco do Brasil', apelido: 'Ourocard Fácil', tipo: 'cartao', final: '0469', ativo: true },
+    { id: 'xp', instituicao: 'XP', apelido: 'XP Infinite', tipo: 'cartao', final: null, ativo: true },
+    { id: 'nu', instituicao: 'Nubank', apelido: 'Nubank', tipo: 'corrente', final: null, ativo: true },
+    { id: 'velha', instituicao: 'Caixa Econômica Federal', apelido: 'Caixa antiga', tipo: 'corrente', final: null, ativo: false },
+  ]
+  it('usa o final quando aparece na fonte', () => {
+    expect(suggestAccount('BANCO DO BRASIL CONTA 27517 4', contas)).toBe('bb-cc')
+    expect(suggestAccount('OUROCARD FACIL VISA BB FINAL 0469', contas)).toBe('bb-0469')
+  })
+  it('usa o nome da instituição quando só há uma candidata', () => {
+    expect(suggestAccount('NUBANK', contas)).toBe('nu')
+    expect(suggestAccount('CARTAO XP VISA INFINITE ONE', contas)).toBe('xp')
+  })
+  it('desempata por tipo, mas nunca chuta quando ainda há dúvida', () => {
+    expect(suggestAccount('BANCO DO BRASIL OUROCARD VISA GOLD', contas)).toBe('bb-0469') // cartão BB é a única candidata de cartão
+    expect(suggestAccount('BANCO DO BRASIL', contas)).toBeNull() // conta ou cartão? ambíguo
+  })
+  it('ignora contas desativadas e fontes sem correspondência', () => {
+    expect(suggestAccount('CAIXA ECONOMICA FEDERAL', contas)).toBeNull()
+    expect(suggestAccount('SANTANDER ELITE MASTERCARD', contas)).toBeNull()
+  })
+  it('final não casa por pedaço de número', () => {
+    expect(suggestAccount('CONTA 1275179', contas)).toBeNull()
   })
 })

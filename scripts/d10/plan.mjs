@@ -47,6 +47,28 @@ export function buildFonteReport(batches) {
   return [...m.values()].sort((a, b) => a.fonte.localeCompare(b.fonte))
 }
 
+// Sugere a conta para uma fonte simplificada, só quando for inequívoco (uma única candidata):
+// 1) o final da conta aparece na fonte; 2) o nome da instituição aparece na fonte.
+// Empates são desfeitos pelo tipo sugerido pelo texto (cartão x conta). Nunca chuta.
+export function suggestAccount(fonteSimplificada, accounts) {
+  const fonte = ` ${fonteSimplificada} `
+  const ativas = accounts.filter(a => a.ativo !== false)
+  const pareceCartao = /\b(OUROCARD|CARTAO|FATURA|VISA|MASTERCARD|ELO)\b/.test(fonte)
+  const pareceConta = /\bCONTA\b/.test(fonte)
+  const refine = list => {
+    if (list.length <= 1) return list
+    const porTipo = list.filter(a => (pareceCartao && !pareceConta ? a.tipo === 'cartao' : pareceConta && !pareceCartao ? a.tipo !== 'cartao' : true))
+    return porTipo.length ? porTipo : list
+  }
+  const porFinal = refine(ativas.filter(a => a.final && new RegExp(`(^|\\s)${a.final}(\\s|$)`).test(fonte)))
+  if (porFinal.length === 1) return porFinal[0].id
+  const porNome = refine(ativas.filter(a => {
+    const inst = normText(a.instituicao)
+    return inst.length >= 2 && fonte.includes(` ${inst} `)
+  }))
+  return porNome.length === 1 ? porNome[0].id : null
+}
+
 // Conta para um lote: o mapeamento explícito por id vence; depois, a primeira regra "fonte~..." que casar.
 export function accountForBatch(batch, mapping) {
   if (mapping[batch.id]) return mapping[batch.id]
