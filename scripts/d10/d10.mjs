@@ -44,10 +44,12 @@ try {
     console.table(r.contas)
     console.log('LOTES SEM CONTA (encontrados = lançamentos que o vínculo por horário acharia)')
     console.table(r.lotes)
+    console.log('GRUPOS SEM LOTE (lançamentos sem conta e sem lote; a chave vai no arquivo de mapeamento)')
+    console.table(r.grupos)
     console.log(`Lançamentos sem conta: ${r.totalSemConta}`)
-    const modelo = Object.fromEntries(r.lotes.map(l => [l.id, null]))
+    const modelo = Object.fromEntries([...r.lotes.map(l => l.id), ...r.grupos.map(g => g.chave)].map(k => [k, null]))
     writeJson(`private/d10-${tag}-mapeamento.json`, modelo)
-    console.log('Preencha o arquivo com o id da conta de cada lote (null = não vincular) e rode "propor".')
+    console.log('Preencha o arquivo com o id da conta de cada lote ou grupo (null = não vincular) e rode "propor".')
   }
 
   if (command === 'propor') {
