@@ -47,6 +47,7 @@ const CATEGORIES = [
   { id: "c-reserva",       nome: "Reserva de emergência",  classificacao: "poupanca",   exemplos: "CDB, poupança, fundo de emergência" },
   { id: "c-investimentos", nome: "Investimentos",          classificacao: "poupanca",   exemplos: "ações, fundos, tesouro direto, criptomoeda, aporte" },
   { id: "c-previdencia",   nome: "Previdência",            classificacao: "poupanca",   exemplos: "PGBL, VGBL, previdência privada, INSS" },
+  { id: "c-tarifas",       nome: "Tarifas e juros bancários", classificacao: "necessidade", exemplos: "juros de cheque especial, IOF, tarifa bancária, anuidade, encargos" },
 ];
 
 const SYSTEM_PROMPT = `Você é um assistente especializado em finanças pessoais brasileiras.

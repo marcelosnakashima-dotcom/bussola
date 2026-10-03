@@ -51,6 +51,7 @@ const CATEGORIES = [
   { id: "c-reserva",       nome: "Reserva de emergência",  exemplos: "CDB, poupança, fundo de emergência" },
   { id: "c-investimentos", nome: "Investimentos",          exemplos: "ações, fundos, tesouro direto, criptomoeda, aporte" },
   { id: "c-previdencia",   nome: "Previdência",            exemplos: "PGBL, VGBL, previdência privada, INSS" },
+  { id: "c-tarifas",       nome: "Tarifas e juros bancários", exemplos: "juros de cheque especial, IOF, tarifa bancária, anuidade, encargos" },
 ];
 const CONF: Record<string, "alta" | "media" | "revisar"> = { a: "alta", m: "media", r: "revisar" };
 
