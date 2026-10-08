@@ -99,3 +99,7 @@ D1 (`parse-pdf`) e D2 (banco) já foram feitos. Pontos de parada obrigatórios p
 - Pix entre contas do mesmo titular aparece duas vezes, como saída numa instituição e entrada na outra.
 - Parcelas antigas em faturas: a importação manual de 29/09 datou essas parcelas no fechamento da fatura, para caírem no mês do orçamento.
 - Conteúdo financeiro educativo deve ser apresentado como não-recomendação.
+
+## Plano e rolling forecast
+
+Tela `/#/plano` (`src/pages/PlanoPage.tsx`, motor em `src/lib/planoForecast.ts`, dados em `plano_*` e `plano_realizado()`): o realizado vem das transações importadas, o plano é carregado pela Arsen (`scripts/plano`). Detalhes, mapa de categorias e ordem de publicação em `docs/PLANO_ROLLING_FORECAST.md`. A migration `20261009120000_plano_rolling_forecast.sql` **não foi aplicada**.

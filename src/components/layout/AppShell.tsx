@@ -2,7 +2,7 @@ import { type ReactNode } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import {
   LayoutDashboard, Upload, Wallet, CreditCard, SlidersHorizontal,
-  ShieldCheck, LogOut, Calculator, User, ClipboardList, Landmark
+  ShieldCheck, LogOut, Calculator, User, ClipboardList, Landmark, LineChart
 } from 'lucide-react'
 import { ArsenLogo } from '@/components/ArsenLogo'
 import { ToastContainer } from '@/components/Toast'
@@ -16,6 +16,7 @@ const NAV = [
   { to: '/contas',      label: 'Contas e cartões',        short: 'Contas',      Icon: Landmark },
   { to: '/dividas',     label: 'Dívidas e financiamentos', short: 'Dívidas',    Icon: CreditCard },
   { to: '/metas',       label: 'Metas 50/30/20',          short: 'Metas',       Icon: SlidersHorizontal },
+  { to: '/plano',        label: 'Plano e forecast',        short: 'Plano',       Icon: LineChart },
   { to: '/simulador',   label: 'Simulador',               short: 'Simular',     Icon: Calculator },
   { to: '/diagnostico', label: 'Diagnóstico financeiro',   short: 'Diagnóstico', Icon: ClipboardList },
   { to: '/perfil',      label: 'Perfil',                  short: 'Perfil',      Icon: User },
@@ -32,7 +33,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   ]
 
   const gridCols =
-    navItems.length >= 10 ? 'grid-cols-10' :
+    navItems.length >= 11 ? 'grid-cols-11' :
+    navItems.length === 10 ? 'grid-cols-10' :
     navItems.length === 9 ? 'grid-cols-9' :
     navItems.length === 8 ? 'grid-cols-8' :
     navItems.length === 7 ? 'grid-cols-7' :
