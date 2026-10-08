@@ -71,6 +71,7 @@ node scripts/d10/d10.mjs contas --household "<HOUSEHOLD_ID>" --arquivo private/c
 node scripts/d10/d10.mjs contas --household "<HOUSEHOLD_ID>" --arquivo private/contas-<id8>.json --confirmar # cria
 ```
 
+   O `owner_user_id` pode ser só o começo do `user_id` (6 ou mais caracteres), desde que bata com um único membro do household.
    O comando valida tipo, final (3 a 6 dígitos), titular do household e duplicidade. Rode `lotes` de novo para pegar os ids das contas criadas.
 
 1. **Lotes e contas:**

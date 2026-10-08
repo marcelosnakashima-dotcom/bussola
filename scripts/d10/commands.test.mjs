@@ -195,6 +195,21 @@ describe('criar contas', () => {
     expect(r.gravado).toBe(true)
     expect(db.state.accounts).toHaveLength(4)
   })
+  it('aceita o dono como prefixo único do user_id e grava o id completo', async () => {
+    const db = fakeDb({ ...seed, people: [{ userId: 'aaaa1111-0000', nome: 'A' }, { userId: 'bbbb2222-0000', nome: 'B' }, { userId: 'bbbb2223-0000', nome: 'C' }] })
+    const ok = [{ instituicao: 'Banco Gama', apelido: 'Corrente', tipo: 'corrente', final: null, owner_user_id: 'AAAA11' }]
+    const r = await cmdContas({ db, household: H, contas: ok, confirmar: true })
+    expect(r.gravado).toBe(true)
+    expect(db.state.accounts.at(-1).owner_user_id).toBe('aaaa1111-0000')
+  })
+  it('recusa prefixo ambíguo ou sem correspondência', async () => {
+    const db = fakeDb({ ...seed, people: [{ userId: 'bbbb2222-0000', nome: 'B' }, { userId: 'bbbb2223-0000', nome: 'C' }] })
+    const ruim = [
+      { instituicao: 'Banco Gama', apelido: 'X', tipo: 'corrente', owner_user_id: 'bbbb222' },
+      { instituicao: 'Banco Gama', apelido: 'Y', tipo: 'corrente', owner_user_id: 'cccc33' },
+    ]
+    await expect(cmdContas({ db, household: H, contas: ruim, confirmar: true })).rejects.toThrow(/mais de um[\s\S]*nenhum/)
+  })
   it('valida tipo, final, dono do household e duplicidade, sem gravar nada', async () => {
     const db = fakeDb(seed)
     const ruim = [
