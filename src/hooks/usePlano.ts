@@ -4,6 +4,7 @@ import {
   addMeses, ultimoMesDoPlano,
   type PlanoConfig, type PlanoEntrada, type PlanoLinha, type PlanoValores, type RealizadoRow, type Grupo,
 } from '@/lib/planoForecast'
+import { lerConteudo, lerPendencias, type ConteudoPlano, type Pendencia } from '@/lib/planoConteudo'
 
 export interface Cobertura { contasAtivas: number; contasComLote: number }
 
@@ -12,6 +13,9 @@ interface PlanoDados {
   householdId: string
   cobertura: Cobertura | null
   coberturaMes: string | null
+  realizadoVisivel: boolean
+  conteudo: ConteudoPlano
+  pendencias: Pendencia[]
 }
 
 // Plano e realizado do household de quem está logado. O realizado vem de plano_realizado(), que soma as
@@ -49,14 +53,19 @@ export function usePlano() {
         metaBaseExtra: Number(cfg.meta_base_extra ?? 0),
       }
 
-      const [{ data: ls, error: eL }, { data: vs, error: eV }, { data: fs, error: eF }] = await Promise.all([
+      const [{ data: ls, error: eL }, { data: vs, error: eV }, { data: fs, error: eF }, cont, pend] = await Promise.all([
         supabase.from('plano_linhas').select('*').eq('household_id', householdId).order('ordem'),
         supabase.from('plano_valores').select('linha_id, mes, valor').eq('household_id', householdId).limit(5000),
         supabase.from('plano_meses_fechados').select('mes').eq('household_id', householdId),
+        supabase.from('plano_conteudo').select('secao, dados').eq('household_id', householdId),
+        supabase.from('plano_pendencias').select('*').eq('household_id', householdId).order('ordem'),
       ])
       if (eL) throw eL
       if (eV) throw eV
       if (eF) throw eF
+      // conteúdo e pendências são complementares: se falharem (migration ainda não aplicada), a tela segue sem elas
+      const conteudo = lerConteudo(cont.error ? [] : (cont.data ?? []))
+      const pendencias = pend.error ? [] : lerPendencias(pend.data ?? [])
 
       const linhas: PlanoLinha[] = (ls ?? []).map(l => ({
         id: l.id as string,
@@ -101,7 +110,10 @@ export function usePlano() {
         if (r) cobertura = { contasAtivas: Number(r.contas_ativas), contasComLote: Number(r.contas_com_lote) }
       } catch { /* indicador opcional */ }
 
-      setDados({ entrada: { config, linhas, valores, realizado, fechados }, householdId, cobertura, coberturaMes })
+      setDados({
+        entrada: { config, linhas, valores, realizado, fechados }, householdId, cobertura, coberturaMes,
+        realizadoVisivel: cfg.realizado_visivel === true, conteudo, pendencias,
+      })
       setSemPlano(false)
     } catch (e: any) {
       setError(e?.message ?? 'Erro ao carregar o plano')
@@ -120,5 +132,12 @@ export function usePlano() {
     await load()
   }
 
-  return { dados, semPlano, loading, error, refresh: load, fecharMes }
+  // O casal responde a uma pendência dirigida a ele; a função do banco só aceita o household de quem chama.
+  const responder = async (id: string, resposta: string) => {
+    const { error: err } = await supabase.rpc('plano_responder_pendencia', { p_id: id, p_resposta: resposta })
+    if (err) throw err
+    await load()
+  }
+
+  return { dados, semPlano, loading, error, refresh: load, fecharMes, responder }
 }

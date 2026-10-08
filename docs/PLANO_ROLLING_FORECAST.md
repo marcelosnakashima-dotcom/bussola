@@ -1,6 +1,6 @@
 # Plano e rolling forecast no app
 
-Tela **Plano e forecast** (`/#/plano`): o casal acompanha o plano combinado com a Arsen e a projeção dos próximos 12 meses.
+Tela **Meu plano** (`/#/plano`): o casal vê o conteúdo da apresentação (onde estamos, método, caixa, plano de corte, dívidas), a projeção dos próximos 12 meses, as pendências (com campo de resposta) e como o acompanhamento funciona.
 O **realizado não é digitado**: sai das transações que o casal importa (extratos e faturas). Cada importação atualiza o forecast.
 
 ## Como funciona
@@ -68,3 +68,26 @@ Antes disso, movimentos entre contas ainda não classificados contam como despes
 ## Testes
 
 `npx vitest run src/lib/planoForecast.test.ts scripts/plano` (fixtures sintéticas).
+
+## Conteúdo da tela e pendências (migration 20261009150000)
+
+A migration `20261009150000_plano_conteudo_pendencias.sql` (aplicar depois da `20261009120000`) cria:
+
+- `plano_conteudo`: uma seção por linha (`diagnostico`, `metodo`, `caixa`, `corte`, `dividas`) em jsonb. O código não tem nenhum valor do cliente.
+  Seção ausente ou malformada simplesmente não aparece na tela (leitor em `src/lib/planoConteudo.ts`).
+- `plano_pendencias`: itens a decidir, do casal ou da Arsen. O casal só grava a própria resposta, pela função `plano_responder_pendencia`
+  (valida o household e que a pendência é do casal e não está resolvida). Status "resolvida" e o texto das pendências são da Arsen.
+- `plano_config.realizado_visivel` (padrão `false`): enquanto for falso, a tela esconde "gastos reais contra o plano", os meses fechados e o
+  aviso de extratos faltando. Ligue só quando as transferências entre contas estiverem classificadas e o realizado refletir o consumo real.
+
+Carga (terminal do Marcelo, mesmo ambiente do `carregar`):
+
+```bash
+node scripts/plano/plano.mjs conteudo --household <HOUSEHOLD_ID> --arquivo private/plano-conteudo-<id8>.json            # simulação
+node scripts/plano/plano.mjs conteudo --household <HOUSEHOLD_ID> --arquivo private/plano-conteudo-<id8>.json --confirmar # grava
+node scripts/plano/plano.mjs realizado --household <HOUSEHOLD_ID> --visivel sim --confirmar                               # liga o realizado
+```
+
+O arquivo tem `secoes` (objeto) e `pendencias` (lista com `ordem`, `titulo`, `detalhe`, `responsavel`). Repetir a carga atualiza as seções e os
+textos das pendências (casadas pelo título) sem apagar resposta, status ou data do casal. Pendências do banco fora do arquivo não são removidas.
+O carregador e o aplicativo validam as seções com as mesmas regras (há um teste cruzado em `src/lib/planoConteudo.test.ts`).

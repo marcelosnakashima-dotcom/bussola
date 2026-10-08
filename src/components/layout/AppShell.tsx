@@ -16,7 +16,7 @@ const NAV = [
   { to: '/contas',      label: 'Contas e cartões',        short: 'Contas',      Icon: Landmark },
   { to: '/dividas',     label: 'Dívidas e financiamentos', short: 'Dívidas',    Icon: CreditCard },
   { to: '/metas',       label: 'Metas 50/30/20',          short: 'Metas',       Icon: SlidersHorizontal },
-  { to: '/plano',        label: 'Plano e forecast',        short: 'Plano',       Icon: LineChart },
+  { to: '/plano',        label: 'Meu plano',        short: 'Plano',       Icon: LineChart },
   { to: '/simulador',   label: 'Simulador',               short: 'Simular',     Icon: Calculator },
   { to: '/diagnostico', label: 'Diagnóstico financeiro',   short: 'Diagnóstico', Icon: ClipboardList },
   { to: '/perfil',      label: 'Perfil',                  short: 'Perfil',      Icon: User },

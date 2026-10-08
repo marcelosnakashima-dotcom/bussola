@@ -3,6 +3,8 @@
 // Uso e passo a passo: docs/PLANO_ROLLING_FORECAST.md
 //
 //   node scripts/plano/plano.mjs carregar --household <uuid> --arquivo private/plano-<id8>.json [--confirmar]
+//   node scripts/plano/plano.mjs conteudo --household <uuid> --arquivo private/plano-conteudo-<id8>.json [--confirmar]
+//   node scripts/plano/plano.mjs realizado --household <uuid> --visivel sim|nao [--confirmar]
 //   node scripts/plano/plano.mjs status   --household <uuid>
 //
 // Variáveis de ambiente (nunca impressas, nunca gravadas): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
@@ -11,7 +13,7 @@
 
 import fs from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
-import { validarPlano, montarCarga, resumoCarga } from './carregar.mjs'
+import { validarPlano, montarCarga, resumoCarga, validarConteudo, montarConteudo } from './carregar.mjs'
 
 const [, , command, ...rest] = process.argv
 const args = {}
@@ -23,7 +25,7 @@ for (let i = 0; i < rest.length; i++) {
 }
 const fail = msg => { console.error(`Erro: ${msg}`); process.exit(1) }
 
-if (!['carregar', 'status'].includes(command ?? '')) fail('comando deve ser carregar ou status.')
+if (!['carregar', 'conteudo', 'realizado', 'status'].includes(command ?? '')) fail('comando deve ser carregar, conteudo, realizado ou status.')
 const household = args.household
 if (!household || household === true || !/^[0-9a-f-]{36}$/i.test(household)) fail('informe --household <uuid>.')
 const url = process.env.SUPABASE_URL
@@ -72,6 +74,37 @@ async function carregar() {
   console.log('\nGravado. Abra o app em /#/plano para conferir.')
 }
 
+async function conteudo() {
+  if (!args.arquivo || args.arquivo === true) fail('informe --arquivo private/plano-conteudo-<id8>.json.')
+  let arq
+  try { arq = JSON.parse(fs.readFileSync(args.arquivo, 'utf8')) } catch (e) { fail(`não consegui ler ${args.arquivo}: ${e.message}`) }
+  const erros = validarConteudo(arq)
+  if (erros.length) fail(`arquivo inválido:\n- ${erros.join('\n- ')}`)
+  const cfg = must(await sb.from('plano_config').select('household_id').eq('household_id', household).maybeSingle(), 'ler config')
+  if (!cfg) fail('este household ainda não tem plano carregado (rode "carregar" antes).')
+  const existentes = must(await sb.from('plano_pendencias').select('id,titulo').eq('household_id', household), 'ler pendências')
+  const c = montarConteudo(arq, household, existentes)
+  console.log(`\nSeções: ${c.secoes.map(s => s.secao).join(', ') || '(nenhuma)'}`)
+  console.log(`Pendências: ${c.inserir.length} novas, ${c.atualizar.length} atualizadas (resposta e status do casal são preservados)`)
+  if (c.naoNoArquivo.length) console.log(`Atenção: ${c.naoNoArquivo.length} pendência(s) do banco não estão no arquivo e NÃO serão removidas.`)
+  if (!args.confirmar) { console.log('\nSimulação: nada foi gravado. Rode de novo com --confirmar para gravar.'); return }
+  if (c.secoes.length) must(await sb.from('plano_conteudo').upsert(c.secoes, { onConflict: 'household_id,secao' }), 'gravar seções')
+  if (c.inserir.length) must(await sb.from('plano_pendencias').insert(c.inserir), 'inserir pendências')
+  for (const u of c.atualizar) { const { id, ...v } = u; must(await sb.from('plano_pendencias').update(v).eq('id', id).eq('household_id', household), 'atualizar pendência') }
+  console.log('\nGravado. Abra o app em /#/plano para conferir.')
+}
+
+async function realizado() {
+  if (!['sim', 'nao'].includes(args.visivel)) fail('informe --visivel sim ou --visivel nao.')
+  const valor = args.visivel === 'sim'
+  const cfg = must(await sb.from('plano_config').select('realizado_visivel').eq('household_id', household).maybeSingle(), 'ler config')
+  if (!cfg) fail('este household ainda não tem plano carregado.')
+  console.log(`realizado_visivel: ${cfg.realizado_visivel} -> ${valor}`)
+  if (!args.confirmar) { console.log('Simulação: nada foi gravado. Rode de novo com --confirmar.'); return }
+  must(await sb.from('plano_config').update({ realizado_visivel: valor }).eq('household_id', household), 'gravar')
+  console.log('Gravado.')
+}
+
 async function status() {
   const cfg = must(await sb.from('plano_config').select('*').eq('household_id', household).maybeSingle(), 'ler config')
   if (!cfg) { console.log('Household sem plano carregado.'); return }
@@ -80,13 +113,15 @@ async function status() {
   const valores = must(await sb.from('plano_valores').select('linha_id', { count: 'exact', head: true }).eq('household_id', household), 'contar valores')
   console.log(JSON.stringify({
     inicio: cfg.inicio, meses: cfg.meses, pct_reserva: cfg.pct_reserva, meta_reserva_meses: cfg.meta_reserva_meses,
-    linhas: linhas.length, naoRastreaveis: linhas.filter(l => !l.rastreavel).length,
+    realizado_visivel: cfg.realizado_visivel, linhas: linhas.length, naoRastreaveis: linhas.filter(l => !l.rastreavel).length,
     mesesFechados: fechados.map(f => f.mes), valores: valores ?? undefined,
   }, null, 2))
 }
 
 try {
   if (command === 'carregar') await carregar()
+  else if (command === 'conteudo') await conteudo()
+  else if (command === 'realizado') await realizado()
   else await status()
 } catch (e) {
   fail(e.message)

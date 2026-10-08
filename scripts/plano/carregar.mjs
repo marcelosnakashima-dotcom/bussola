@@ -119,3 +119,72 @@ export function resumoCarga(plano) {
     folgaMedia12m: Math.round((tot.receita - tot.despesa) / 12),
   }
 }
+
+// ─── Conteúdo das seções e pendências ───────────────────────────────────────────────────────────
+// Mesmas regras do leitor do aplicativo (src/lib/planoConteudo.ts): uma seção inválida não aparece na tela,
+// então o carregador recusa antes de gravar. Um teste cruzado garante que os dois lados concordam.
+
+export const SECOES = ['diagnostico', 'metodo', 'caixa', 'corte', 'dividas']
+const isObj = v => typeof v === 'object' && v !== null && !Array.isArray(v)
+const str = v => typeof v === 'string' && v.trim() !== ''
+const partesOk = v => Array.isArray(v) && v.every(p => isObj(p) && str(p.rotulo) && num(p.valor))
+const blocoOk = v => isObj(v) && num(v.total) && partesOk(v.partes)
+
+const VALIDADORES = {
+  diagnostico: d => blocoOk(d.renda) && blocoOk(d.patrimonio) && blocoOk(d.dividas) && isObj(d.parcelas)
+    && num(d.parcelas.pctInicio) && num(d.parcelas.valorInicio) && num(d.parcelas.pctFim) && str(d.parcelas.rotuloInicio) && str(d.parcelas.rotuloFim),
+  metodo: d => Array.isArray(d.blocos) && d.blocos.length > 0 && Array.isArray(d.ordem)
+    && d.blocos.every(b => isObj(b) && str(b.pct) && str(b.titulo) && str(b.descricao))
+    && d.ordem.every(o => isObj(o) && str(o.titulo) && str(o.descricao)),
+  caixa: d => partesOk(d.entra) && partesOk(d.sai) && Array.isArray(d.resultados)
+    && d.resultados.every(r => isObj(r) && str(r.rotulo) && num(r.valor)),
+  corte: d => Array.isArray(d.linhas) && Array.isArray(d.fases)
+    && num(d.totalHoje) && num(d.totalTeto) && num(d.resultadoAntes) && num(d.resultadoDepois)
+    && d.linhas.every(l => isObj(l) && str(l.categoria) && str(l.como) && (l.hoje == null || num(l.hoje)) && (l.teto == null || num(l.teto)) && (l.economia == null || num(l.economia)))
+    && d.fases.every(f => isObj(f) && str(f.periodo) && num(f.teto)),
+  dividas: d => Array.isArray(d.itens) && d.itens.length > 0
+    && d.itens.every(i => isObj(i) && str(i.rotulo) && str(i.detalhe) && str(i.dono) && typeof i.fim === 'string' && MES.test(i.fim)),
+}
+
+export function validarConteudo(arq) {
+  const erros = []
+  if (!isObj(arq)) return ['arquivo de conteúdo inválido']
+  const secoes = arq.secoes ?? {}
+  if (!isObj(secoes)) erros.push('secoes deve ser um objeto')
+  else for (const [nome, dados] of Object.entries(secoes)) {
+    if (!SECOES.includes(nome)) { erros.push(`seção desconhecida: ${nome}`); continue }
+    if (!isObj(dados) || !VALIDADORES[nome](dados)) erros.push(`seção ${nome}: formato inválido (a tela não a mostraria)`)
+  }
+  const pend = arq.pendencias ?? []
+  if (!Array.isArray(pend)) erros.push('pendencias deve ser uma lista')
+  else {
+    const titulos = new Set()
+    pend.forEach((p, i) => {
+      const n = `pendencias[${i}]`
+      if (!isObj(p)) { erros.push(`${n}: inválida`); return }
+      if (!str(p.titulo) || p.titulo.length > 200) erros.push(`${n}: titulo obrigatório (até 200 caracteres)`)
+      else if (titulos.has(p.titulo)) erros.push(`${n}: título repetido`)
+      else titulos.add(p.titulo)
+      if (p.detalhe != null && (typeof p.detalhe !== 'string' || p.detalhe.length > 2000)) erros.push(`${n}: detalhe até 2000 caracteres`)
+      if (!['casal', 'arsen'].includes(p.responsavel)) erros.push(`${n}: responsavel deve ser casal ou arsen`)
+      if (!Number.isInteger(p.ordem)) erros.push(`${n}: ordem deve ser inteiro`)
+    })
+  }
+  if (Object.keys(isObj(secoes) ? secoes : {}).length === 0 && (!Array.isArray(pend) || pend.length === 0)) erros.push('o arquivo não tem seções nem pendências')
+  return erros
+}
+
+// existentes: pendências já no banco ({id, titulo}). Atualiza só título/detalhe/responsável/ordem das que já existem:
+// resposta, status e datas do casal nunca são tocados pela carga.
+export function montarConteudo(arq, householdId, existentes = []) {
+  const porTitulo = new Map(existentes.map(e => [e.titulo, e.id]))
+  const secoes = Object.entries(arq.secoes ?? {}).map(([secao, dados]) => ({ household_id: householdId, secao, dados, atualizado_em: new Date().toISOString() }))
+  const inserir = [], atualizar = []
+  for (const p of arq.pendencias ?? []) {
+    const base = { titulo: p.titulo, detalhe: p.detalhe ?? null, responsavel: p.responsavel, ordem: p.ordem }
+    if (porTitulo.has(p.titulo)) atualizar.push({ id: porTitulo.get(p.titulo), ...base })
+    else inserir.push({ household_id: householdId, status: p.status ?? 'aberta', ...base })
+  }
+  const naoNoArquivo = existentes.filter(e => !(arq.pendencias ?? []).some(p => p.titulo === e.titulo)).map(e => e.titulo)
+  return { secoes, inserir, atualizar, naoNoArquivo }
+}

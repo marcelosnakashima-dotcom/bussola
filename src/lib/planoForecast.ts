@@ -110,10 +110,13 @@ export function inicioDoMes(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
 }
 
+const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+
+// curto: "out/26"; longo: "outubro de 2026"
 export function rotuloMes(mes: string, curto = true): string {
-  const d = new Date(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)) - 1, 1)
-  const s = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.', '')
-  return curto ? s : d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+  const ano = Number(mes.slice(0, 4)), m = Number(mes.slice(5, 7)) - 1
+  if (curto) return `${MESES_CURTOS[m]}/${String(ano).slice(2)}`
+  return new Date(ano, m, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
 }
 
 export function ultimoMesDoPlano(config: PlanoConfig): string {
