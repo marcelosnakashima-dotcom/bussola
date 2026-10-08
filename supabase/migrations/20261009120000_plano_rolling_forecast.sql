@@ -146,7 +146,7 @@ set search_path = public
 as $$
   with m as (
     select date_trunc('month', p_mes)::date as ini,
-           (date_trunc('month', p_mes) + interval '1 month - 1 day')::date as fim
+           (date_trunc('month', p_mes) + interval '1 month' - interval '1 day')::date as fim
   ), contas as (
     select a.id from public.accounts a
      where a.household_id = public.my_household_id() and a.ativo
