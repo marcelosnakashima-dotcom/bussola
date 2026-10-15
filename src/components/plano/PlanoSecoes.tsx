@@ -292,11 +292,11 @@ export function SecaoAcompanhamento() {
   const passos = [
     { t: 'Todo mês', d: 'Vocês enviam os extratos e as faturas pelo aplicativo (Importar despesas), e o realizado se atualiza sozinho.' },
     { t: 'Revisão da Arsen', d: 'Conferimos a classificação e fechamos o mês com o realizado de receitas e despesas.' },
-    { t: 'Forecast atualizado', d: 'A janela avança um mês e recalculamos os próximos 12 meses, por cenário.' },
+    { t: 'Previsão atualizada', d: 'A previsão avança um mês e recalculamos os próximos 12 meses.' },
     { t: 'Decisões', d: 'Ajustamos tetos, parcelas e reserva com os números na mesa.' },
   ]
   return (
-    <Secao id="acompanhamento" kicker="ACOMPANHAMENTO" titulo="Como vamos acompanhar o plano" subtitulo="Os extratos de vocês atualizam o realizado e o forecast dos próximos 12 meses.">
+    <Secao id="acompanhamento" kicker="ACOMPANHAMENTO" titulo="Como vamos acompanhar o plano" subtitulo="Os extratos de vocês atualizam o realizado e a previsão dos próximos 12 meses.">
       <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {passos.map((p, i) => (
           <li key={p.t} className={cartao} style={bordaCartao}>

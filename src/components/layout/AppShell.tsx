@@ -1,8 +1,8 @@
-import { type ReactNode } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import {
   LayoutDashboard, Upload, Wallet, CreditCard, SlidersHorizontal,
-  ShieldCheck, LogOut, Calculator, User, ClipboardList, Landmark, LineChart
+  ShieldCheck, LogOut, Calculator, User, ClipboardList, Landmark, LineChart, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react'
 import { ArsenLogo } from '@/components/ArsenLogo'
 import { ToastContainer } from '@/components/Toast'
@@ -22,7 +22,21 @@ const NAV = [
   { to: '/perfil',      label: 'Perfil',                  short: 'Perfil',      Icon: User },
 ]
 
+const CHAVE_MENU = 'arsen.menu-oculto'
+
 export function AppShell({ children }: { children: ReactNode }) {
+  // Menu lateral ocultável (desktop), para apresentar o plano em tela cheia. A escolha fica no navegador.
+  const [menuOculto, setMenuOculto] = useState(false)
+  useEffect(() => {
+    try { setMenuOculto(localStorage.getItem(CHAVE_MENU) === '1') } catch { /* sem armazenamento: menu visível */ }
+  }, [])
+  const alternarMenu = () => {
+    setMenuOculto(v => {
+      const novo = !v
+      try { localStorage.setItem(CHAVE_MENU, novo ? '1' : '0') } catch { /* ignora */ }
+      return novo
+    })
+  }
   const { user, signOut } = useAuth()
   const { isAdmin }       = useUserRole()
   const location          = useLocation()
@@ -44,7 +58,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex bg-canvas">
       {/* ── Sidebar (desktop) ── */}
-      <aside className="hidden md:flex w-64 shrink-0 flex-col justify-between sticky top-0 h-screen"
+      <aside className={`${menuOculto ? 'hidden' : 'hidden md:flex'} w-64 shrink-0 flex-col justify-between sticky top-0 h-screen`}
         style={{ background: 'var(--ink)' }}>
         {/* Logo */}
         <div>
@@ -57,6 +71,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               </p>
             </div>
           </div>
+          <button onClick={alternarMenu} title="Ocultar o menu" aria-label="Ocultar o menu"
+            className="mx-3 mt-3 flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/50 hover:text-white hover:bg-white/5 transition-colors">
+            <PanelLeftClose className="w-4 h-4" /> Ocultar menu
+          </button>
           {/* Nav links */}
           <nav className="px-3 py-4 flex flex-col gap-1">
             {navItems.map(({ to, label, Icon }) => {
@@ -100,6 +118,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
         </div>
       </aside>
+
+      {menuOculto && (
+        <button onClick={alternarMenu} title="Mostrar o menu" aria-label="Mostrar o menu"
+          className="hidden md:flex fixed left-3 top-3 z-30 items-center gap-2 rounded-lg px-3 py-2 text-xs text-white shadow"
+          style={{ background: 'var(--ink)' }}>
+          <PanelLeftOpen className="w-4 h-4" /> Menu
+        </button>
+      )}
 
       {/* ── Mobile header ── */}
       <div className="md:hidden fixed top-0 inset-x-0 z-20 flex items-center justify-between px-4 h-14 border-b border-white/10"
