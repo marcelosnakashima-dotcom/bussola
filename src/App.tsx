@@ -10,6 +10,7 @@ import { AssetsPage } from '@/pages/AssetsPage'
 import { AccountsPage } from '@/pages/AccountsPage'
 import { DebtsPage } from '@/pages/DebtsPage'
 import { GoalsPage } from '@/pages/GoalsPage'
+import { PlanoPage } from '@/pages/PlanoPage'
 import { AdminPage } from '@/pages/AdminPage'
 import { SimuladorPage } from '@/pages/SimuladorPage'
 import { ProfilePage } from '@/pages/ProfilePage'
@@ -77,6 +78,7 @@ const assetsRoute = createRoute({ getParentRoute: () => appRoute, path: '/ativos
 const accountsRoute = createRoute({ getParentRoute: () => appRoute, path: '/contas', component: AccountsPage })
 const debtsRoute = createRoute({ getParentRoute: () => appRoute, path: '/dividas', component: DebtsPage })
 const goalsRoute = createRoute({ getParentRoute: () => appRoute, path: '/metas', component: GoalsPage })
+const planoRoute = createRoute({ getParentRoute: () => appRoute, path: '/plano', component: PlanoPage })
 const simuladorRoute = createRoute({ getParentRoute: () => appRoute, path: '/simulador', component: SimuladorPage })
 const diagnosticoRoute = createRoute({ getParentRoute: () => appRoute, path: '/diagnostico', component: DiagnosticoPage })
 const profileRoute = createRoute({ getParentRoute: () => appRoute, path: '/perfil', component: ProfilePage })
@@ -85,7 +87,7 @@ const adminRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin',
 const router = createRouter({
   routeTree: rootRoute.addChildren([
     authRoute,
-    appRoute.addChildren([dashRoute, importRoute, assetsRoute, accountsRoute, debtsRoute, goalsRoute, simuladorRoute, diagnosticoRoute, profileRoute, adminRoute]),
+    appRoute.addChildren([dashRoute, importRoute, assetsRoute, accountsRoute, debtsRoute, goalsRoute, planoRoute, simuladorRoute, diagnosticoRoute, profileRoute, adminRoute]),
   ]),
   history: createHashHistory(),
 })
