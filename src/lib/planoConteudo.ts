@@ -8,7 +8,6 @@ export interface Diagnostico {
   renda: { total: number; partes: Parte[]; nota?: string }
   patrimonio: { total: number; partes: Parte[]; nota?: string }
   dividas: { total: number; partes: Parte[]; nota?: string }
-  parcelas: { pctInicio: number; rotuloInicio: string; valorInicio: number; pctFim: number; rotuloFim: string; nota?: string }
   rodape?: string
 }
 export interface Metodo {
@@ -93,16 +92,8 @@ function bloco(v: unknown): { total: number; partes: Parte[]; nota?: string } | 
 export function lerDiagnostico(d: unknown): Diagnostico | null {
   if (!isObj(d)) return null
   const renda = bloco(d.renda), patrimonio = bloco(d.patrimonio), dividas = bloco(d.dividas)
-  const p = isObj(d.parcelas) ? d.parcelas : null
-  if (!renda || !patrimonio || !dividas || !p) return null
-  const pctInicio = num(p.pctInicio), valorInicio = num(p.valorInicio), pctFim = num(p.pctFim)
-  const rotuloInicio = str(p.rotuloInicio), rotuloFim = str(p.rotuloFim)
-  if (pctInicio === null || valorInicio === null || pctFim === null || rotuloInicio === null || rotuloFim === null) return null
-  return {
-    subtitulo: opt(d.subtitulo), renda, patrimonio, dividas,
-    parcelas: { pctInicio, rotuloInicio, valorInicio, pctFim, rotuloFim, nota: opt(p.nota) },
-    rodape: opt(d.rodape),
-  }
+  if (!renda || !patrimonio || !dividas) return null
+  return { subtitulo: opt(d.subtitulo), renda, patrimonio, dividas, rodape: opt(d.rodape) }
 }
 
 export function lerMetodo(d: unknown): Metodo | null {

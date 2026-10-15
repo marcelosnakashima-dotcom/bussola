@@ -55,10 +55,9 @@ export function SecaoDiagnostico({ d }: { d: Diagnostico }) {
     { titulo: 'Patrimônio cadastrado', valor: brl0(d.patrimonio.total), nota: d.patrimonio.nota, partes: d.patrimonio.partes },
     { titulo: 'Financiamentos e empréstimos', valor: brl0(d.dividas.total), nota: d.dividas.nota, partes: d.dividas.partes },
   ]
-  const pc = d.parcelas
   return (
     <Secao id="onde-estamos" kicker="DIAGNÓSTICO" titulo="Onde estamos hoje" subtitulo={d.subtitulo}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {cards.map(c => (
           <div key={c.titulo} className={cartao} style={bordaCartao}>
             <p className="text-xs" style={{ color: 'var(--muted)' }}>{c.titulo}</p>
@@ -67,22 +66,6 @@ export function SecaoDiagnostico({ d }: { d: Diagnostico }) {
             <div className={c.nota ? '' : 'mt-3'}><BarraPartes partes={c.partes} /></div>
           </div>
         ))}
-        <div className="rounded-2xl p-4 md:p-5" style={{ background: 'var(--ink)', color: '#fff' }}>
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,.6)' }}>Da renda em parcelas</p>
-          <p className="font-display text-2xl mt-1" style={{ color: '#73F0A1' }}>{pc.pctInicio}%</p>
-          <p className="text-xs mt-1 mb-3" style={{ color: 'rgba(255,255,255,.7)' }}>
-            {brl0(pc.valorInicio)} por mês em {pc.rotuloInicio}, caindo para {pc.pctFim}% em {pc.rotuloFim}{pc.nota ? `, ${pc.nota.charAt(0).toLowerCase()}${pc.nota.slice(1)}` : ''}
-          </p>
-          {[[pc.rotuloInicio, pc.pctInicio, '#73F0A1'], [pc.rotuloFim, pc.pctFim, '#52DA84']].map(([rot, p, cor]) => (
-            <div key={String(rot)} className="flex items-center gap-2 text-xs mt-1.5">
-              <span className="w-12 shrink-0" style={{ color: 'rgba(255,255,255,.7)' }}>{rot}</span>
-              <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,.16)' }}>
-                <i className="block h-full rounded-full" style={{ width: `${Math.min(100, Number(p))}%`, background: String(cor) }} />
-              </div>
-              <b className="w-9 text-right">{p}%</b>
-            </div>
-          ))}
-        </div>
       </div>
       {d.rodape && <Nota>* {d.rodape}</Nota>}
     </Secao>
