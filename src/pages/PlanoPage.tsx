@@ -6,7 +6,7 @@ import { CalendarCheck, AlertTriangle, Lock, Unlock } from 'lucide-react'
 import { usePlano, usePlanoHouseholds, type Cobertura } from '@/hooks/usePlano'
 import { useUserRole } from '@/hooks/useData'
 import {
-  BASES_RENDA, CENARIOS, compararCenarios, desejosDoMes, historicoFechado, projetar, rotuloMes,
+  BASES_RENDA, CENARIOS, compararCenarios, historicoFechado, projetar, rotuloMes,
   type BaseRenda, type PlanoEntrada,
 } from '@/lib/planoForecast'
 import type { ConteudoPlano, Pendencia } from '@/lib/planoConteudo'
@@ -78,11 +78,10 @@ export interface PlanoViewProps {
   realizadoVisivel?: boolean
   onResponder?: (id: string, resposta: string) => Promise<void>
   somenteLeitura?: boolean
-  hoje?: Date
 }
 
 export function PlanoView({
-  entrada, cobertura, coberturaMes, isAdmin, onFechar, hoje,
+  entrada, cobertura, coberturaMes, isAdmin, onFechar,
   conteudo = VAZIO, pendencias = [], realizadoVisivel = false, onResponder = async () => {}, somenteLeitura = false,
 }: PlanoViewProps) {
   // A visão mês a mês segue sempre o plano combinado, com a renda típica. A comparação de cenários tem a própria renda.
@@ -94,12 +93,11 @@ export function PlanoView({
     return {
       proj,
       cenarios: compararCenarios(entrada, baseComp),
-      desejos: desejosDoMes(entrada, proj.mesCorrente, hoje ?? new Date()),
       historico: historicoFechado(entrada),
     }
-  }, [entrada, baseComp, hoje])
+  }, [entrada, baseComp])
 
-  const { proj, cenarios, desejos, historico } = calc
+  const { proj, cenarios, historico } = calc
   const { janela, mesCorrente, planoCompleto } = proj
   const primeiro = janela[0]
   const ultimo = janela[janela.length - 1]
@@ -210,29 +208,6 @@ export function PlanoView({
                 </ResponsiveContainer>
               </div>
             </div>
-
-            {realizadoVisivel && desejos.length > 0 && (
-              <div className={cartao} style={bordaCartao}>
-                <h3 className="font-display text-lg" style={{ color: 'var(--ink)' }}>Desejos contra o teto</h3>
-                <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>Quanto já foi gasto em cada categoria de desejos, comparado ao teto do plano de corte. Vem dos extratos importados.</p>
-                <div className="space-y-3">
-                  {desejos.map(d => {
-                    const pct = Number.isFinite(d.pct) ? d.pct : 1
-                    return (
-                      <div key={d.chave}>
-                        <div className="flex justify-between text-sm">
-                          <span style={{ color: 'var(--ink)' }}>{d.rotulo}</span>
-                          <span style={{ color: pct > 1 ? '#B91C1C' : 'var(--muted)' }}>{brl0(d.realizado)} de {brl0(d.teto)}</span>
-                        </div>
-                        <div className="h-2 rounded-full mt-1" style={{ background: '#EFEAE0' }}>
-                          <div className="h-2 rounded-full" style={{ width: `${Math.min(100, pct * 100)}%`, background: pct > 1 ? '#B91C1C' : pct > 0.8 ? '#D97706' : 'var(--brand)' }} />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
 
             <div className={`${cartao} !p-0 overflow-hidden`} style={bordaCartao}>
               <h3 className="font-display text-lg p-4 md:p-5 pb-2" style={{ color: 'var(--ink)' }}>Mês a mês</h3>
