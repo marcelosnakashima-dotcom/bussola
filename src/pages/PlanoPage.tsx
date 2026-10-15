@@ -6,8 +6,8 @@ import { CalendarCheck, AlertTriangle, Lock, Unlock } from 'lucide-react'
 import { usePlano, usePlanoHouseholds, type Cobertura } from '@/hooks/usePlano'
 import { useUserRole } from '@/hooks/useData'
 import {
-  BASES_RENDA, CENARIOS, compararCenarios, historicoFechado, projetar, rotuloMes,
-  type BaseRenda, type PlanoEntrada,
+  CENARIOS, compararCenarios, historicoFechado, projetar, rotuloMes,
+  type PlanoEntrada,
 } from '@/lib/planoForecast'
 import type { ConteudoPlano, Pendencia } from '@/lib/planoConteudo'
 import {
@@ -84,18 +84,17 @@ export function PlanoView({
   entrada, cobertura, coberturaMes, isAdmin, onFechar,
   conteudo = VAZIO, pendencias = [], realizadoVisivel = false, onResponder = async () => {}, somenteLeitura = false,
 }: PlanoViewProps) {
-  // A visão mês a mês segue sempre o plano combinado, com a renda típica. A comparação de cenários tem a própria renda.
-  const [baseComp, setBaseComp] = useState<BaseRenda>('tipica')
   const [acaoErro, setAcaoErro] = useState<string | null>(null)
 
   const calc = useMemo(() => {
     const proj = projetar(entrada, 'plano', 'tipica')
     return {
       proj,
-      cenarios: compararCenarios(entrada, baseComp),
+      // Só o plano e o plano sem o corte, ambos com a renda típica (os cenários de ritmo ficam no motor).
+      cenarios: compararCenarios(entrada, 'tipica').filter(c => c.cenario === 'plano' || c.cenario === 'sem_corte'),
       historico: historicoFechado(entrada),
     }
-  }, [entrada, baseComp])
+  }, [entrada])
 
   const { proj, cenarios, historico } = calc
   const { janela, mesCorrente, planoCompleto } = proj
@@ -247,16 +246,9 @@ export function PlanoView({
               <div>
                 <h3 className="font-display text-xl" style={{ color: 'var(--ink)' }}>E se o gasto não seguir o plano?</h3>
                 <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
-                  Quatro formas de olhar para os mesmos 12 meses. Cada cartão mostra, em média, quanto sobra por mês, quanto de reserva se forma e quando ela chega na meta.
+                  O plano combinado ao lado do que aconteceria sem fazer o corte nos desejos, com a renda típica do casal. Cada cartão mostra, em média, quanto sobra por mês, quanto de reserva se forma em 12 meses e quando ela chega na meta.
                 </p>
               </div>
-              <label className="text-xs inline-block" style={{ color: 'var(--muted)' }}>
-                Renda considerada na comparação
-                <select value={baseComp} onChange={e => setBaseComp(e.target.value as BaseRenda)}
-                  className="block mt-1 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: 'var(--border)', color: 'var(--ink)' }}>
-                  {BASES_RENDA.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
-                </select>
-              </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {cenarios.map(c => {
                   const def = CENARIOS.find(x => x.id === c.cenario)
@@ -278,7 +270,7 @@ export function PlanoView({
                 })}
               </div>
               <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                "Ritmo atual" usa a média dos últimos 3 meses fechados; enquanto não houver meses fechados, ele repete o plano. A meta da reserva é de {entrada.config.metaReservaMeses} meses de necessidades.
+                A meta da reserva é de {entrada.config.metaReservaMeses} meses de necessidades.
               </p>
             </div>
           </>
