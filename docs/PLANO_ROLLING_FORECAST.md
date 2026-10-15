@@ -91,3 +91,10 @@ node scripts/plano/plano.mjs realizado --household <HOUSEHOLD_ID> --visivel sim 
 O arquivo tem `secoes` (objeto) e `pendencias` (lista com `ordem`, `titulo`, `detalhe`, `responsavel`). Repetir a carga atualiza as seções e os
 textos das pendências (casadas pelo título) sem apagar resposta, status ou data do casal. Pendências do banco fora do arquivo não são removidas.
 O carregador e o aplicativo validam as seções com as mesmas regras (há um teste cruzado em `src/lib/planoConteudo.test.ts`).
+
+## Seletor "Ver como" para admin (migration 20261015120000)
+
+Na tela Meu plano, o admin (`user_roles.role = 'admin'`) tem um seletor com os households que têm plano. Ao escolher um, a tela carrega o
+plano, o conteúdo e as pendências dele (as políticas de admin já permitem a leitura) e o **realizado** e a **cobertura** pelas funções
+`plano_realizado_admin` e `plano_cobertura_admin` (SECURITY DEFINER, recusam quem não é admin). Nesse modo o realizado fica visível para o
+admin mesmo com `realizado_visivel = false`, e as pendências ficam em somente leitura. "Fechar mês" funciona para o household escolhido.

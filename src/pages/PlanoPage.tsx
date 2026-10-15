@@ -3,7 +3,7 @@ import {
   ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts'
 import { CalendarCheck, AlertTriangle, Lock, Unlock } from 'lucide-react'
-import { usePlano, type Cobertura } from '@/hooks/usePlano'
+import { usePlano, usePlanoHouseholds, type Cobertura } from '@/hooks/usePlano'
 import { useUserRole } from '@/hooks/useData'
 import {
   BASES_RENDA, CENARIOS, compararCenarios, desejosDoMes, historicoFechado, projetar, rotuloMes,
@@ -20,28 +20,50 @@ const sinal = (n: number) => (n >= 0 ? 'var(--brand)' : '#B91C1C')
 const VAZIO: ConteudoPlano = { diagnostico: null, metodo: null, caixa: null, corte: null, dividas: null }
 
 export function PlanoPage() {
-  const { dados, semPlano, loading, error, fecharMes, responder } = usePlano()
   const { isAdmin } = useUserRole()
+  const [alvo, setAlvo] = useState<string | null>(null)
+  const households = usePlanoHouseholds(isAdmin)
+  const { dados, semPlano, loading, error, fecharMes, responder } = usePlano(isAdmin ? alvo : null)
 
-  if (loading) return <div className="p-8 text-sm" style={{ color: 'var(--muted)' }}>Carregando o plano…</div>
-  if (error) return <div className="p-8 text-sm text-red-700">Não foi possível carregar o plano: {error}</div>
+  // Seletor "Ver como", só para admin: troca o household exibido sem trocar de login.
+  const seletor = isAdmin && households.length > 0 && (
+    <div className="p-4 md:px-8 md:pt-6 max-w-screen-lg mx-auto">
+      <label className="text-xs" style={{ color: 'var(--muted)' }}>
+        Ver como (admin)
+        <select value={alvo ?? ''} onChange={e => setAlvo(e.target.value || null)}
+          className="block mt-1 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: 'var(--border)', color: 'var(--ink)' }}>
+          <option value="">Meu household</option>
+          {households.map(h => <option key={h.id} value={h.id}>{h.rotulo}</option>)}
+        </select>
+      </label>
+    </div>
+  )
+
+  if (loading) return <>{seletor}<div className="p-8 text-sm" style={{ color: 'var(--muted)' }}>Carregando o plano…</div></>
+
+  if (error) return <>{seletor}<div className="p-8 text-sm text-red-700">Não foi possível carregar o plano: {error}</div></>
   if (semPlano || !dados) {
     return (
-      <div className="p-4 md:p-8 max-w-screen-md mx-auto">
+      <>{seletor}<div className="p-4 md:p-8 max-w-screen-md mx-auto">
         <h1 className="font-display text-2xl md:text-3xl" style={{ color: 'var(--ink)' }}>Meu plano financeiro</h1>
         <p className="text-sm mt-2" style={{ color: 'var(--muted)' }}>
           O plano financeiro ainda não foi publicado para este grupo familiar. Quando a Arsen concluir a
           construção do plano, ele aparece aqui e se atualiza a cada extrato importado.
         </p>
-      </div>
+      </div></>
     )
   }
+  const verComo = isAdmin && alvo !== null
   return (
-    <PlanoView
-      entrada={dados.entrada} cobertura={dados.cobertura} coberturaMes={dados.coberturaMes} isAdmin={isAdmin}
-      onFechar={fecharMes} conteudo={dados.conteudo} pendencias={dados.pendencias} realizadoVisivel={dados.realizadoVisivel}
-      onResponder={responder}
-    />
+    <>
+      {seletor}
+      <PlanoView
+        entrada={dados.entrada} cobertura={dados.cobertura} coberturaMes={dados.coberturaMes} isAdmin={isAdmin}
+        onFechar={fecharMes} conteudo={dados.conteudo} pendencias={dados.pendencias}
+        realizadoVisivel={verComo ? true : dados.realizadoVisivel}
+        onResponder={responder} somenteLeitura={verComo}
+      />
+    </>
   )
 }
 
@@ -55,12 +77,13 @@ export interface PlanoViewProps {
   pendencias?: Pendencia[]
   realizadoVisivel?: boolean
   onResponder?: (id: string, resposta: string) => Promise<void>
+  somenteLeitura?: boolean
   hoje?: Date
 }
 
 export function PlanoView({
   entrada, cobertura, coberturaMes, isAdmin, onFechar, hoje,
-  conteudo = VAZIO, pendencias = [], realizadoVisivel = false, onResponder = async () => {},
+  conteudo = VAZIO, pendencias = [], realizadoVisivel = false, onResponder = async () => {}, somenteLeitura = false,
 }: PlanoViewProps) {
   const [cenario, setCenario] = useState<Cenario>('plano')
   const [base, setBase] = useState<BaseRenda>('tipica')
@@ -323,7 +346,7 @@ export function PlanoView({
         )}
       </Secao>
 
-      {pendencias.length > 0 && <SecaoPendencias pendencias={pendencias} onResponder={onResponder} />}
+      {pendencias.length > 0 && <SecaoPendencias pendencias={pendencias} onResponder={onResponder} podeResponder={!somenteLeitura} />}
 
       <SecaoAcompanhamento />
 
