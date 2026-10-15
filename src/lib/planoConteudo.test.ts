@@ -10,7 +10,6 @@ export const secoes = {
     renda: { total: 20000, partes: [{ rotulo: 'Pessoa A', valor: 14000 }, { rotulo: 'Pessoa B', valor: 6000 }], nota: 'sem 13º' },
     patrimonio: { total: 500000, partes: [{ rotulo: 'Imóvel', valor: 400000 }, { rotulo: 'Veículo', valor: 100000 }] },
     dividas: { total: 150000, partes: [{ rotulo: 'Banco X', valor: 100000 }, { rotulo: 'Banco Y', valor: 50000 }] },
-    parcelas: { pctInicio: 40, rotuloInicio: 'out/26', valorInicio: 8000, pctFim: 20, rotuloFim: 'set/27', nota: 'conforme as parcelas terminam' },
     rodape: 'Sobre a renda após impostos.',
   },
   metodo: {
@@ -44,7 +43,7 @@ describe('leitor do conteúdo', () => {
   it('aceita a fixture completa e preserva os valores', () => {
     const c = lerConteudo(Object.entries(secoes).map(([secao, dados]) => ({ secao, dados })))
     expect(c.diagnostico?.renda.total).toBe(20000)
-    expect(c.diagnostico?.parcelas.pctFim).toBe(20)
+    expect(c.diagnostico?.patrimonio.total).toBe(500000)
     expect(c.metodo?.blocos).toHaveLength(3)
     expect(c.caixa?.resultados[1].valor).toBe(-500)
     expect(c.corte?.linhas[1].tetoTexto).toBe('a definir')
@@ -91,7 +90,7 @@ describe('o carregador e o aplicativo concordam', () => {
 
   it('o que o carregador recusa, o aplicativo também não mostraria', () => {
     const quebras: Record<string, any> = {
-      diagnostico: { ...secoes.diagnostico, parcelas: { pctInicio: 40 } },
+      diagnostico: { ...secoes.diagnostico, renda: { total: 'x', partes: [] } },
       metodo: { blocos: [], ordem: [] },
       caixa: { ...secoes.caixa, entra: [{ rotulo: 'A', valor: 'x' }] },
       corte: { ...secoes.corte, fases: [{ periodo: '', teto: 1 }] },

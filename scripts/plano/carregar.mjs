@@ -131,8 +131,7 @@ const partesOk = v => Array.isArray(v) && v.every(p => isObj(p) && str(p.rotulo)
 const blocoOk = v => isObj(v) && num(v.total) && partesOk(v.partes)
 
 const VALIDADORES = {
-  diagnostico: d => blocoOk(d.renda) && blocoOk(d.patrimonio) && blocoOk(d.dividas) && isObj(d.parcelas)
-    && num(d.parcelas.pctInicio) && num(d.parcelas.valorInicio) && num(d.parcelas.pctFim) && str(d.parcelas.rotuloInicio) && str(d.parcelas.rotuloFim),
+  diagnostico: d => blocoOk(d.renda) && blocoOk(d.patrimonio) && blocoOk(d.dividas),
   metodo: d => Array.isArray(d.blocos) && d.blocos.length > 0 && Array.isArray(d.ordem)
     && d.blocos.every(b => isObj(b) && str(b.pct) && str(b.titulo) && str(b.descricao))
     && d.ordem.every(o => isObj(o) && str(o.titulo) && str(o.descricao)),
