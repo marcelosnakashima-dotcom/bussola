@@ -14,7 +14,7 @@ O **realizado não é digitado**: sai das transações que o casal importa (extr
    - *Plano*: valores do plano. *Sem o corte*: desejos no patamar anterior (`sem_corte` de cada linha).
    - *Ritmo atual*: necessidades e desejos na média dos últimos 3 meses fechados (sem histórico, cai no plano). *Ritmo atual +10%*: o mesmo vezes 1,1.
    - Renda *típica* (plano), *holerite mais recente* (plano + `renda_ajuste_holerite`) ou *ritmo realizado* (média da receita dos meses fechados).
-   - A tela mostra só *Plano* e *Sem o corte*, com a renda típica; os cenários de ritmo e as outras bases de renda ficam no motor para quando houver meses fechados.
+   - A tela mostra o *Plano* com a renda *típica* (mês a mês) e compara o plano com a renda típica e com o holerite; os cenários *Sem o corte* e de ritmo e a base de ritmo realizado ficam no motor para quando houver meses fechados.
    - Dívidas e futuro seguem sempre o plano. Reserva: aporte = sobra positiva × `pct_reserva`; meta = `meta_reserva_meses` × (necessidades + dívidas + `meta_base_extra`).
 4. **Fechar o mês (Arsen).** Na própria tela, o admin fecha o mês depois de conferir classificação e cobertura. O fechamento é em sequência
    (`plano_fechar_mes`): o mês corrente avança e a janela anda. Reabrir um mês reabre os posteriores.

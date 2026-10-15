@@ -6,8 +6,8 @@ import { CalendarCheck, AlertTriangle, Lock, Unlock } from 'lucide-react'
 import { usePlano, usePlanoHouseholds, type Cobertura } from '@/hooks/usePlano'
 import { useUserRole } from '@/hooks/useData'
 import {
-  CENARIOS, compararCenarios, historicoFechado, projetar, rotuloMes,
-  type PlanoEntrada,
+  BASES_RENDA, compararCenarios, historicoFechado, projetar, rotuloMes,
+  type BaseRenda, type PlanoEntrada,
 } from '@/lib/planoForecast'
 import type { ConteudoPlano, Pendencia } from '@/lib/planoConteudo'
 import {
@@ -90,13 +90,22 @@ export function PlanoView({
     const proj = projetar(entrada, 'plano', 'tipica')
     return {
       proj,
-      // Só o plano e o plano sem o corte, ambos com a renda típica (os cenários de ritmo ficam no motor).
-      cenarios: compararCenarios(entrada, 'tipica').filter(c => c.cenario === 'plano' || c.cenario === 'sem_corte'),
+      // O mesmo plano com duas rendas: a típica e o holerite mais recente (os demais cenários ficam no motor).
+      rendas: (['tipica', 'holerite'] as BaseRenda[]).map(base => {
+        const p = projetar(entrada, 'plano', base)
+        const r = compararCenarios(entrada, base).find(c => c.cenario === 'plano')
+        return {
+          base,
+          // menor receita da janela = renda do mês sem 13º e férias
+          rendaBase: p.janela.length ? Math.min(...p.janela.map(m => m.receita)) : 0,
+          folgaMedia: r?.folgaMedia ?? 0, reservaFinal: r?.reservaFinal ?? 0, mesDaMeta: r?.mesDaMeta ?? null,
+        }
+      }),
       historico: historicoFechado(entrada),
     }
   }, [entrada])
 
-  const { proj, cenarios, historico } = calc
+  const { proj, rendas, historico } = calc
   const { janela, mesCorrente, planoCompleto } = proj
   const primeiro = janela[0]
   const ultimo = janela[janela.length - 1]
@@ -244,33 +253,39 @@ export function PlanoView({
 
             <div className="space-y-3 pt-2">
               <div>
-                <h3 className="font-display text-xl" style={{ color: 'var(--ink)' }}>E se o gasto não seguir o plano?</h3>
+                <h3 className="font-display text-xl" style={{ color: 'var(--ink)' }}>Renda típica ou holerite?</h3>
                 <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
-                  O plano combinado ao lado do que aconteceria sem fazer o corte nos desejos, com a renda típica do casal. Cada cartão mostra, em média, quanto sobra por mês, quanto de reserva se forma em 12 meses e quando ela chega na meta.
+                  O mesmo plano com duas rendas. Cada cartão mostra, em média, quanto sobra por mês, quanto de reserva se forma em 12 meses e quando ela chega na meta.
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {cenarios.map(c => {
-                  const def = CENARIOS.find(x => x.id === c.cenario)
-                  const destaque = c.cenario === 'plano'
+                {rendas.map(r => {
+                  const tipica = r.base === 'tipica'
                   return (
-                    <div key={c.cenario} className={cartao} style={{ ...bordaCartao, ...(destaque ? { borderColor: 'var(--brand)', borderWidth: 2 } : null) }}>
+                    <div key={r.base} className={cartao} style={{ ...bordaCartao, ...(tipica ? { borderColor: 'var(--brand)', borderWidth: 2 } : null) }}>
                       <div className="flex items-start justify-between gap-2">
-                        <p className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>{def?.label}</p>
-                        {destaque && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: '#CFEBDA', color: 'var(--ink)' }}>Combinado</span>}
+                        <p className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>
+                          {tipica ? 'Plano com a renda típica' : 'Plano com o holerite mais recente'}
+                        </p>
+                        {tipica && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ background: '#CFEBDA', color: 'var(--ink)' }}>Usada no mês a mês</span>}
                       </div>
-                      <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>{def?.desc}</p>
-                      <dl className="mt-3 grid grid-cols-3 gap-2 text-sm">
-                        <div><dt className="text-[11px]" style={{ color: 'var(--muted)' }}>Sobra por mês</dt><dd className="font-semibold" style={{ color: sinal(c.folgaMedia) }}>{brl0(c.folgaMedia)}</dd></div>
-                        <div><dt className="text-[11px]" style={{ color: 'var(--muted)' }}>Reserva em 12 meses</dt><dd className="font-semibold" style={{ color: 'var(--ink)' }}>{brl0(c.reservaFinal)}</dd></div>
-                        <div><dt className="text-[11px]" style={{ color: 'var(--muted)' }}>Chega na meta</dt><dd className="font-semibold" style={{ color: 'var(--ink)' }}>{mesMeta(c.mesDaMeta)}</dd></div>
+                      <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+                        {tipica
+                          ? 'Média do que a família costuma receber, sem pagamentos pontuais.'
+                          : 'O contracheque mais recente. É um mês só e pode vir acima ou abaixo da média.'}
+                      </p>
+                      <dl className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                        <div><dt className="text-[11px]" style={{ color: 'var(--muted)' }}>Renda por mês</dt><dd className="font-semibold" style={{ color: 'var(--ink)' }}>{brl0(r.rendaBase)}</dd></div>
+                        <div><dt className="text-[11px]" style={{ color: 'var(--muted)' }}>Sobra por mês</dt><dd className="font-semibold" style={{ color: sinal(r.folgaMedia) }}>{brl0(r.folgaMedia)}</dd></div>
+                        <div><dt className="text-[11px]" style={{ color: 'var(--muted)' }}>Reserva em 12 meses</dt><dd className="font-semibold" style={{ color: 'var(--ink)' }}>{brl0(r.reservaFinal)}</dd></div>
+                        <div><dt className="text-[11px]" style={{ color: 'var(--muted)' }}>Chega na meta</dt><dd className="font-semibold" style={{ color: 'var(--ink)' }}>{mesMeta(r.mesDaMeta)}</dd></div>
                       </dl>
                     </div>
                   )
                 })}
               </div>
               <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                A meta da reserva é de {entrada.config.metaReservaMeses} meses de necessidades.
+                O 13º e as férias entram nas duas rendas do mesmo jeito. A meta da reserva é de {entrada.config.metaReservaMeses} meses de necessidades.
               </p>
             </div>
           </>
