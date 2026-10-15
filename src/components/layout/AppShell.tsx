@@ -121,7 +121,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {menuOculto && (
         <button onClick={alternarMenu} title="Mostrar o menu" aria-label="Mostrar o menu"
-          className="hidden md:flex fixed left-3 top-3 z-30 items-center gap-2 rounded-lg px-3 py-2 text-xs text-white shadow"
+          className="hidden md:flex fixed left-4 bottom-4 z-30 items-center gap-2 rounded-lg px-3 py-2 text-xs text-white shadow"
           style={{ background: 'var(--ink)' }}>
           <PanelLeftOpen className="w-4 h-4" /> Menu
         </button>
