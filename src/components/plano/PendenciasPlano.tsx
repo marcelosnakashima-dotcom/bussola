@@ -10,13 +10,13 @@ const COR_STATUS = {
   resolvida: { bg: '#CFEBDA', fg: '#17221B' },
 } as const
 
-function CartaoPendencia({ p, onResponder }: { p: Pendencia; onResponder: (id: string, resposta: string) => Promise<void> }) {
+function CartaoPendencia({ p, onResponder, podeResponder: permitido }: { p: Pendencia; onResponder: (id: string, resposta: string) => Promise<void>; podeResponder: boolean }) {
   const [texto, setTexto] = useState(p.resposta ?? '')
   const [editando, setEditando] = useState(!p.resposta)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const cor = COR_STATUS[p.status]
-  const podeResponder = p.responsavel === 'casal' && p.status !== 'resolvida'
+  const podeResponder = permitido && p.responsavel === 'casal' && p.status !== 'resolvida'
 
   const salvar = async () => {
     setSalvando(true); setErro(null)
@@ -58,7 +58,7 @@ function CartaoPendencia({ p, onResponder }: { p: Pendencia; onResponder: (id: s
         <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: '#F5F0E8', color: 'var(--ink)' }}>
           <p className="text-[11px] mb-1" style={{ color: 'var(--muted)' }}>Resposta enviada{p.respondidoEm ? ` em ${new Date(p.respondidoEm).toLocaleDateString('pt-BR')}` : ''}</p>
           <p className="whitespace-pre-wrap">{p.resposta}</p>
-          <button onClick={() => setEditando(true)} className="text-xs underline mt-2" style={{ color: 'var(--brand)' }}>Editar resposta</button>
+          {permitido && <button onClick={() => setEditando(true)} className="text-xs underline mt-2" style={{ color: 'var(--brand)' }}>Editar resposta</button>}
         </div>
       ))}
 
@@ -74,7 +74,7 @@ function CartaoPendencia({ p, onResponder }: { p: Pendencia; onResponder: (id: s
   )
 }
 
-export function SecaoPendencias({ pendencias, onResponder }: { pendencias: Pendencia[]; onResponder: (id: string, resposta: string) => Promise<void> }) {
+export function SecaoPendencias({ pendencias, onResponder, podeResponder = true }: { pendencias: Pendencia[]; onResponder: (id: string, resposta: string) => Promise<void>; podeResponder?: boolean }) {
   const abertas = pendencias.filter(p => p.status !== 'resolvida')
   const ordenadas = [...pendencias].sort((a, b) => Number(a.status === 'resolvida') - Number(b.status === 'resolvida') || a.ordem - b.ordem)
   return (
@@ -82,7 +82,7 @@ export function SecaoPendencias({ pendencias, onResponder }: { pendencias: Pende
       subtitulo={abertas.length ? `${abertas.length} ${abertas.length === 1 ? 'item em aberto' : 'itens em aberto'}. Com estas informações, trocamos as estimativas por números confirmados.` : 'Tudo respondido. Obrigado!'}>
       {ordenadas.length === 0
         ? <p className="text-sm" style={{ color: 'var(--muted)' }}>Nenhuma pendência no momento.</p>
-        : <ul className="grid grid-cols-1 lg:grid-cols-2 gap-3">{ordenadas.map(p => <CartaoPendencia key={p.id} p={p} onResponder={onResponder} />)}</ul>}
+        : <ul className="grid grid-cols-1 lg:grid-cols-2 gap-3">{ordenadas.map(p => <CartaoPendencia key={p.id} p={p} onResponder={onResponder} podeResponder={podeResponder} />)}</ul>}
     </Secao>
   )
 }

@@ -20,7 +20,7 @@ interface PlanoDados {
 
 // Plano e realizado do household de quem está logado. O realizado vem de plano_realizado(), que soma as
 // transações confirmadas (sem transferências): cada importação de extrato ou fatura atualiza o forecast.
-export function usePlano() {
+export function usePlano(householdAlvo?: string | null) {
   const [dados, setDados] = useState<PlanoDados | null>(null)
   const [semPlano, setSemPlano] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -33,9 +33,13 @@ export function usePlano() {
       const { data: auth } = await supabase.auth.getUser()
       if (!auth.user) { setLoading(false); return }
 
-      const { data: membro } = await supabase
-        .from('household_members').select('household_id').eq('user_id', auth.user.id).maybeSingle()
-      const householdId = membro?.household_id as string | undefined
+      // Admin pode olhar outro household (seletor "Ver como"); as funções _admin recusam quem não é admin.
+      let householdId = householdAlvo ?? undefined
+      if (!householdId) {
+        const { data: membro } = await supabase
+          .from('household_members').select('household_id').eq('user_id', auth.user.id).maybeSingle()
+        householdId = membro?.household_id as string | undefined
+      }
       if (!householdId) { setSemPlano(true); setLoading(false); return }
 
       const { data: cfg, error: eCfg } = await supabase
@@ -85,10 +89,9 @@ export function usePlano() {
       const fechados = (fs ?? []).map(f => String(f.mes))
 
       const ate = addMeses(ultimoMesDoPlano(config), 1)
-      const { data: rl, error: eR } = await supabase.rpc('plano_realizado', {
-        p_de: config.inicio,
-        p_ate: ate,
-      })
+      const { data: rl, error: eR } = householdAlvo
+        ? await supabase.rpc('plano_realizado_admin', { p_household: householdId, p_de: config.inicio, p_ate: ate })
+        : await supabase.rpc('plano_realizado', { p_de: config.inicio, p_ate: ate })
       if (eR) throw eR
       const realizado: RealizadoRow[] = (rl ?? []).map((r: any) => ({
         mes: String(r.mes),
@@ -105,7 +108,9 @@ export function usePlano() {
         const set = new Set(fechados)
         while (set.has(m) && m < ultimoMesDoPlano(config)) m = addMeses(m, 1)
         coberturaMes = m
-        const { data: cv } = await supabase.rpc('plano_cobertura', { p_mes: m })
+        const { data: cv } = householdAlvo
+          ? await supabase.rpc('plano_cobertura_admin', { p_household: householdId, p_mes: m })
+          : await supabase.rpc('plano_cobertura', { p_mes: m })
         const r = Array.isArray(cv) ? cv[0] : cv
         if (r) cobertura = { contasAtivas: Number(r.contas_ativas), contasComLote: Number(r.contas_com_lote) }
       } catch { /* indicador opcional */ }
@@ -120,7 +125,7 @@ export function usePlano() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [householdAlvo])
 
   useEffect(() => { load() }, [load])
 
@@ -140,4 +145,22 @@ export function usePlano() {
   }
 
   return { dados, semPlano, loading, error, refresh: load, fecharMes, responder }
+}
+
+// Households com plano carregado, para o seletor do admin. As políticas de admin deixam ler todos; para quem
+// não é admin a consulta devolve só o próprio household (ou nada).
+export function usePlanoHouseholds(habilitado: boolean) {
+  const [lista, setLista] = useState<{ id: string; rotulo: string }[]>([])
+  useEffect(() => {
+    if (!habilitado) return
+    ;(async () => {
+      const { data: cfg } = await supabase.from('plano_config').select('household_id')
+      const ids = (cfg ?? []).map(c => c.household_id as string)
+      if (ids.length === 0) { setLista([]); return }
+      const { data: hs } = await supabase.from('households').select('id, nome').in('id', ids)
+      const nomes = new Map((hs ?? []).map(h => [h.id as string, (h.nome as string | null) ?? null]))
+      setLista(ids.map(id => ({ id, rotulo: nomes.get(id) ?? `Household ${id.slice(0, 8)}` })))
+    })()
+  }, [habilitado])
+  return lista
 }
