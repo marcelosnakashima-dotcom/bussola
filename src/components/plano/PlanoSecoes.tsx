@@ -205,15 +205,23 @@ export function SecaoCorte({ c }: { c: Corte }) {
             <p className="text-xs" style={{ color: 'var(--muted)' }}>{l.como}</p>
           </div>
         ))}
-      </div>
-      <div className="rounded-2xl p-4 md:p-5 grid gap-3 md:grid-cols-2 md:items-center" style={{ background: 'var(--ink)', color: '#fff' }}>
-        <div>
-          <p className="text-[11px] font-semibold tracking-[0.14em]" style={{ color: '#73F0A1' }}>DESEJOS POR MÊS</p>
-          <p className="font-display text-2xl mt-0.5">{brl0(c.totalHoje)} <span style={{ color: '#73F0A1' }}>→</span> {brl0(c.totalTeto)}</p>
+        <div className="grid gap-x-4 gap-y-1 p-4 md:grid-cols-[1.3fr_1fr_1fr_0.8fr_2fr] md:items-center" style={{ borderTop: '1px solid var(--border)', background: '#EFEAE0' }}>
+          <p className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>Total de desejos por mês</p>
+          <p className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>
+            <span className="md:hidden text-xs font-normal" style={{ color: 'var(--muted)' }}>Hoje: </span>{brl0(c.totalHoje)}
+          </p>
+          <p className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>
+            <span className="md:hidden text-xs font-normal" style={{ color: 'var(--muted)' }}>Teto: </span>{brl0(c.totalTeto)}
+          </p>
+          <p>
+            {c.totalHoje > c.totalTeto
+              ? <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ background: '#CFEBDA', color: 'var(--ink)' }}>−{brl0(c.totalHoje - c.totalTeto)}</span>
+              : <span style={{ color: 'var(--muted)' }}>—</span>}
+          </p>
+          <p className="text-xs" style={{ color: 'var(--ink)' }}>
+            Resultado do mês com a renda típica: de <b>{brl0(c.resultadoAntes)}</b> para <b>{c.resultadoDepois >= 0 ? '+' : ''}{brl0(c.resultadoDepois)}</b>.
+          </p>
         </div>
-        <p className="text-sm" style={{ color: 'rgba(255,255,255,.85)' }}>
-          Com a renda típica do extrato, o resultado do mês passa de <b style={{ color: '#FCA5A5' }}>{brl0(c.resultadoAntes)}</b> para <b style={{ color: '#73F0A1' }}>{c.resultadoDepois >= 0 ? '+' : ''}{brl0(c.resultadoDepois)}</b>.
-        </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {c.fases.map(f => (
@@ -284,11 +292,11 @@ export function SecaoAcompanhamento() {
   const passos = [
     { t: 'Todo mês', d: 'Vocês enviam os extratos e as faturas pelo aplicativo (Importar despesas), e o realizado se atualiza sozinho.' },
     { t: 'Revisão da Arsen', d: 'Conferimos a classificação e fechamos o mês com o realizado de receitas e despesas.' },
-    { t: 'Forecast atualizado', d: 'A janela avança um mês e recalculamos os próximos 12 meses, por cenário.' },
+    { t: 'Previsão atualizada', d: 'A previsão avança um mês e recalculamos os próximos 12 meses.' },
     { t: 'Decisões', d: 'Ajustamos tetos, parcelas e reserva com os números na mesa.' },
   ]
   return (
-    <Secao id="acompanhamento" kicker="ACOMPANHAMENTO" titulo="Como vamos acompanhar o plano" subtitulo="Os extratos de vocês atualizam o realizado e o forecast dos próximos 12 meses.">
+    <Secao id="acompanhamento" kicker="ACOMPANHAMENTO" titulo="Como vamos acompanhar o plano" subtitulo="Os extratos de vocês atualizam o realizado e a previsão dos próximos 12 meses.">
       <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {passos.map((p, i) => (
           <li key={p.t} className={cartao} style={bordaCartao}>

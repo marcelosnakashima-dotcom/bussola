@@ -7,7 +7,7 @@ import { usePlano, usePlanoHouseholds, type Cobertura } from '@/hooks/usePlano'
 import { useUserRole } from '@/hooks/useData'
 import {
   BASES_RENDA, CENARIOS, compararCenarios, desejosDoMes, historicoFechado, projetar, rotuloMes,
-  type BaseRenda, type Cenario, type PlanoEntrada,
+  type BaseRenda, type PlanoEntrada,
 } from '@/lib/planoForecast'
 import type { ConteudoPlano, Pendencia } from '@/lib/planoConteudo'
 import {
@@ -85,19 +85,19 @@ export function PlanoView({
   entrada, cobertura, coberturaMes, isAdmin, onFechar, hoje,
   conteudo = VAZIO, pendencias = [], realizadoVisivel = false, onResponder = async () => {}, somenteLeitura = false,
 }: PlanoViewProps) {
-  const [cenario, setCenario] = useState<Cenario>('plano')
-  const [base, setBase] = useState<BaseRenda>('tipica')
+  // A visão mês a mês segue sempre o plano combinado, com a renda típica. A comparação de cenários tem a própria renda.
+  const [baseComp, setBaseComp] = useState<BaseRenda>('tipica')
   const [acaoErro, setAcaoErro] = useState<string | null>(null)
 
   const calc = useMemo(() => {
-    const proj = projetar(entrada, cenario, base)
+    const proj = projetar(entrada, 'plano', 'tipica')
     return {
       proj,
-      cenarios: compararCenarios(entrada, base),
+      cenarios: compararCenarios(entrada, baseComp),
       desejos: desejosDoMes(entrada, proj.mesCorrente, hoje ?? new Date()),
       historico: historicoFechado(entrada),
     }
-  }, [entrada, cenario, base, hoje])
+  }, [entrada, baseComp, hoje])
 
   const { proj, cenarios, desejos, historico } = calc
   const { janela, mesCorrente, planoCompleto } = proj
@@ -112,6 +112,7 @@ export function PlanoView({
     Futuro: Math.round(m.futuro),
     Receitas: Math.round(m.receita),
   }))
+  const mesDaMetaPlano = janela.find(m => m.metaReserva > 0 && m.reservaFim >= m.metaReserva)?.mes ?? null
   const pctMeta = ultimo && ultimo.metaReserva > 0 ? ultimo.reservaFim / ultimo.metaReserva : 0
 
   const alternarFechamento = async (fechar: boolean) => {
@@ -131,7 +132,7 @@ export function PlanoView({
     conteudo.caixa && { id: 'caixa', label: 'Caixa' },
     conteudo.corte && { id: 'corte', label: 'Plano de corte' },
     conteudo.dividas && { id: 'dividas', label: 'Dívidas' },
-    janela.length > 0 && { id: 'projecao', label: '12 meses' },
+    janela.length > 0 && { id: 'projecao', label: 'Mês a mês' },
     pendencias.length > 0 && { id: 'pendencias', label: abertas ? `Pendências (${abertas})` : 'Pendências' },
     { id: 'acompanhamento', label: 'Acompanhamento' },
   ].filter(Boolean) as { id: string; label: string }[]
@@ -161,26 +162,8 @@ export function PlanoView({
       {conteudo.dividas && <SecaoDividas d={conteudo.dividas} inicio={entrada.config.inicio} />}
 
       {/* Projeção de 12 meses */}
-      <Secao id="projecao" kicker="PROJEÇÃO" titulo="Os próximos 12 meses"
-        subtitulo={janela.length ? `A partir de ${rotuloMes(mesCorrente, false)}. Escolha o cenário e a renda considerada para ver como o plano se comporta.` : undefined}>
-        <div className="flex flex-wrap gap-2">
-          <label className="text-xs" style={{ color: 'var(--muted)' }}>
-            Cenário
-            <select value={cenario} onChange={e => setCenario(e.target.value as Cenario)}
-              className="block mt-1 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: 'var(--border)', color: 'var(--ink)' }}>
-              {CENARIOS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-            </select>
-          </label>
-          <label className="text-xs" style={{ color: 'var(--muted)' }}>
-            Renda considerada
-            <select value={base} onChange={e => setBase(e.target.value as BaseRenda)}
-              className="block mt-1 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: 'var(--border)', color: 'var(--ink)' }}>
-              {BASES_RENDA.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
-            </select>
-          </label>
-        </div>
-        <p className="text-xs -mt-2" style={{ color: 'var(--muted)' }}>{CENARIOS.find(c => c.id === cenario)?.desc}</p>
-
+      <Secao id="projecao" kicker="MÊS A MÊS" titulo="Quanto entra, quanto sai e quanto sobra"
+        subtitulo={janela.length ? `Os próximos 12 meses, a partir de ${rotuloMes(mesCorrente, false)}, seguindo o plano combinado com a renda típica do casal.` : undefined}>
         {planoCompleto && (
           <div className={cartao} style={bordaCartao}>
             <p className="text-sm">Todos os meses do plano foram fechados. Combine com a Arsen o próximo ciclo de planejamento.</p>
@@ -205,7 +188,7 @@ export function PlanoView({
               <Kpi titulo="Folga do mês" valor={brl0(primeiro.folga)} cor={sinal(primeiro.folga)} sub={`Receitas ${brl0(primeiro.receita)} · despesas ${brl0(primeiro.despesas)}`} />
               <Kpi titulo="Folga média (12 meses)" valor={brl0(janela.reduce((s, m) => s + m.folga, 0) / janela.length)} cor={sinal(janela.reduce((s, m) => s + m.folga, 0))} sub="Receitas menos despesas" />
               <Kpi titulo="Reserva ao fim da janela" valor={brl0(ultimo.reservaFim)} cor="var(--ink)" sub={`Meta ${brl0(ultimo.metaReserva)} (${Math.round(pctMeta * 100)}%)`} />
-              <Kpi titulo="Reserva alcança a meta" valor={mesMeta(cenarios.find(c => c.cenario === cenario)?.mesDaMeta ?? null)} cor="var(--ink)" sub={`${entrada.config.metaReservaMeses} meses de necessidades`} />
+              <Kpi titulo="Reserva alcança a meta" valor={mesMeta(mesDaMetaPlano)} cor="var(--ink)" sub={`${entrada.config.metaReservaMeses} meses de necessidades`} />
             </div>
 
             <div className={cartao} style={bordaCartao}>
@@ -230,8 +213,8 @@ export function PlanoView({
 
             {realizadoVisivel && desejos.length > 0 && (
               <div className={cartao} style={bordaCartao}>
-                <h3 className="font-display text-lg" style={{ color: 'var(--ink)' }}>Desejos de {rotuloMes(mesCorrente, false)} contra o teto</h3>
-                <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>Realizado das transações importadas até agora.</p>
+                <h3 className="font-display text-lg" style={{ color: 'var(--ink)' }}>Desejos contra o teto</h3>
+                <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>Quanto já foi gasto em cada categoria de desejos, comparado ao teto do plano de corte. Vem dos extratos importados.</p>
                 <div className="space-y-3">
                   {desejos.map(d => {
                     const pct = Number.isFinite(d.pct) ? d.pct : 1
@@ -285,30 +268,43 @@ export function PlanoView({
               </div>
             </div>
 
-            <div className={`${cartao} !p-0 overflow-hidden`} style={bordaCartao}>
-              <h3 className="font-display text-lg p-4 md:p-5 pb-2" style={{ color: 'var(--ink)' }}>Cenários lado a lado</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm whitespace-nowrap">
-                  <thead>
-                    <tr className="text-xs text-left" style={{ color: 'var(--muted)' }}>
-                      <th className="px-4 py-2 font-medium">Cenário</th>
-                      <th className="px-2 py-2 font-medium text-right">Folga média</th>
-                      <th className="px-2 py-2 font-medium text-right">Reserva final</th>
-                      <th className="px-4 py-2 font-medium text-right">Alcança a meta</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cenarios.map(c => (
-                      <tr key={c.cenario} className="border-t" style={{ borderColor: 'var(--border)', background: c.cenario === cenario ? '#F5F0E8' : undefined }}>
-                        <td className="px-4 py-2">{CENARIOS.find(x => x.id === c.cenario)?.label}</td>
-                        <td className="px-2 py-2 text-right" style={{ color: sinal(c.folgaMedia) }}>{brl0(c.folgaMedia)}</td>
-                        <td className="px-2 py-2 text-right">{brl0(c.reservaFinal)}</td>
-                        <td className="px-4 py-2 text-right">{mesMeta(c.mesDaMeta)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="space-y-3 pt-2">
+              <div>
+                <h3 className="font-display text-xl" style={{ color: 'var(--ink)' }}>E se o gasto não seguir o plano?</h3>
+                <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
+                  Quatro formas de olhar para os mesmos 12 meses. Cada cartão mostra, em média, quanto sobra por mês, quanto de reserva se forma e quando ela chega na meta.
+                </p>
               </div>
+              <label className="text-xs inline-block" style={{ color: 'var(--muted)' }}>
+                Renda considerada na comparação
+                <select value={baseComp} onChange={e => setBaseComp(e.target.value as BaseRenda)}
+                  className="block mt-1 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: 'var(--border)', color: 'var(--ink)' }}>
+                  {BASES_RENDA.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
+                </select>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {cenarios.map(c => {
+                  const def = CENARIOS.find(x => x.id === c.cenario)
+                  const destaque = c.cenario === 'plano'
+                  return (
+                    <div key={c.cenario} className={cartao} style={{ ...bordaCartao, ...(destaque ? { borderColor: 'var(--brand)', borderWidth: 2 } : null) }}>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>{def?.label}</p>
+                        {destaque && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: '#CFEBDA', color: 'var(--ink)' }}>Combinado</span>}
+                      </div>
+                      <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>{def?.desc}</p>
+                      <dl className="mt-3 grid grid-cols-3 gap-2 text-sm">
+                        <div><dt className="text-[11px]" style={{ color: 'var(--muted)' }}>Sobra por mês</dt><dd className="font-semibold" style={{ color: sinal(c.folgaMedia) }}>{brl0(c.folgaMedia)}</dd></div>
+                        <div><dt className="text-[11px]" style={{ color: 'var(--muted)' }}>Reserva em 12 meses</dt><dd className="font-semibold" style={{ color: 'var(--ink)' }}>{brl0(c.reservaFinal)}</dd></div>
+                        <div><dt className="text-[11px]" style={{ color: 'var(--muted)' }}>Chega na meta</dt><dd className="font-semibold" style={{ color: 'var(--ink)' }}>{mesMeta(c.mesDaMeta)}</dd></div>
+                      </dl>
+                    </div>
+                  )
+                })}
+              </div>
+              <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                "Ritmo atual" usa a média dos últimos 3 meses fechados; enquanto não houver meses fechados, ele repete o plano. A meta da reserva é de {entrada.config.metaReservaMeses} meses de necessidades.
+              </p>
             </div>
           </>
         )}
