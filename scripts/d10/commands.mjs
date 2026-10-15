@@ -112,6 +112,15 @@ export async function cmdContas({ db, household, contas, confirmar = false }) {
   const ctx = await db.loadContext(household)
   const donos = new Set(ctx.people.map(p => p.userId))
   const erros = []
+  // O dono pode vir como prefixo (6+ caracteres hex) do user_id, desde que bata com um único membro do household.
+  contas = contas.map((c, i) => {
+    const dono = c.owner_user_id
+    if (!dono || donos.has(dono) || !/^[0-9a-f-]{6,}$/i.test(String(dono))) return c
+    const achados = [...donos].filter(id => String(id).toLowerCase().startsWith(String(dono).toLowerCase()))
+    if (achados.length === 1) return { ...c, owner_user_id: achados[0] }
+    erros.push(`Conta ${i + 1}: o prefixo de owner_user_id ${achados.length === 0 ? 'não bate com nenhum' : 'bate com mais de um'} membro do household.`)
+    return c
+  })
   contas.forEach((c, i) => {
     const n = `Conta ${i + 1}`
     if (!c.instituicao || !String(c.instituicao).trim()) erros.push(`${n}: instituicao obrigatória.`)
