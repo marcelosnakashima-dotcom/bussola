@@ -59,7 +59,7 @@ export interface Transaction {
   categoria_id: string | null
   tipo: 'despesa' | 'receita' | 'transferencia'
   valor: number
-  origem: 'manual' | 'pdf' | 'ofx'
+  origem: 'manual' | 'pdf' | 'ofx' | 'whatsapp'
   status: 'pendente' | 'confirmada'
   confianca?: 'alta' | 'media' | 'revisar'
   account_id?: string | null
