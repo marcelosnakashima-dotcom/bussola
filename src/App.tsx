@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { createRouter, RouterProvider, createRoute, createRootRoute, createHashHistory, Outlet, Navigate, useNavigate } from '@tanstack/react-router'
-import { AuthProvider, useAuth } from '@/lib/auth'
-import { AppShell } from '@/components/layout/AppShell'
+import { AuthProvider, useAuth, POS_LOGIN } from '@/lib/auth'
+import { AppShell, AdminShell } from '@/components/layout/AppShell'
 import { AuthPage } from '@/pages/AuthPage'
 import { ForcePasswordChangePage } from '@/pages/ForcePasswordChangePage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -32,7 +32,18 @@ function currentAppPath() {
 const rootRoute = createRootRoute({ component: () => <Outlet /> })
 const authRoute = createRoute({ getParentRoute: () => rootRoute, path: '/auth', component: AuthPage })
 
-function AuthGuard() {
+
+function Carregando() {
+  return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--canvas)' }}>
+      <div className="w-8 h-8 rounded-full border-4 animate-spin"
+        style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }} />
+    </div>
+  )
+}
+
+// Sessão obrigatória + troca de senha temporária. Devolve o que renderizar no lugar da tela, ou null.
+function useSessionGate() {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
 
@@ -48,14 +59,7 @@ function AuthGuard() {
     }
   }, [user, loading])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--canvas)' }}>
-        <div className="w-8 h-8 rounded-full border-4 animate-spin"
-          style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }} />
-      </div>
-    )
-  }
+  if (loading) return <Carregando />
   if (!user) {
     const path = currentAppPath()
     if (path !== '/auth') {
@@ -68,7 +72,33 @@ function AuthGuard() {
   if (user.user_metadata?.must_change_password === true) {
     return <ForcePasswordChangePage />
   }
+  return null
+}
+
+function AuthGuard() {
+  const gate = useSessionGate()
+  const { role, roleLoading } = useAuth()
+  // Logo após entrar (inclusive pelo Google), o administrador vai para a área dele.
+  const posLogin = sessionStorage.getItem(POS_LOGIN) === '1'
+  // o aviso vale uma vez: some depois que o papel foi lido (efeito, não durante a renderização)
+  useEffect(() => { if (!roleLoading) sessionStorage.removeItem(POS_LOGIN) }, [roleLoading])
+  if (gate) return gate
+  if (posLogin) {
+    if (roleLoading) return <Carregando />
+    if (role === 'admin' && currentAppPath() === '/') return <Navigate to="/admin" />
+  }
   return <AppShell><Outlet /></AppShell>
+}
+
+// Área do administrador: layout próprio. Esconder a tela é só navegação; o servidor
+// continua conferindo o papel em cada função e política.
+function AdminGuard() {
+  const gate = useSessionGate()
+  const { role, roleLoading } = useAuth()
+  if (gate) return gate
+  if (roleLoading) return <Carregando />
+  if (role !== 'admin') return <Navigate to="/" />
+  return <AdminShell><Outlet /></AdminShell>
 }
 
 const appRoute = createRoute({ getParentRoute: () => rootRoute, id: 'app', component: AuthGuard })
@@ -82,12 +112,14 @@ const planoRoute = createRoute({ getParentRoute: () => appRoute, path: '/plano',
 const simuladorRoute = createRoute({ getParentRoute: () => appRoute, path: '/simulador', component: SimuladorPage })
 const diagnosticoRoute = createRoute({ getParentRoute: () => appRoute, path: '/diagnostico', component: DiagnosticoPage })
 const profileRoute = createRoute({ getParentRoute: () => appRoute, path: '/perfil', component: ProfilePage })
-const adminRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin', component: AdminPage })
+const adminAreaRoute = createRoute({ getParentRoute: () => rootRoute, id: 'admin-area', component: AdminGuard })
+const adminRoute = createRoute({ getParentRoute: () => adminAreaRoute, path: '/admin', component: AdminPage })
 
 const router = createRouter({
   routeTree: rootRoute.addChildren([
     authRoute,
-    appRoute.addChildren([dashRoute, importRoute, assetsRoute, accountsRoute, debtsRoute, goalsRoute, planoRoute, simuladorRoute, diagnosticoRoute, profileRoute, adminRoute]),
+    appRoute.addChildren([dashRoute, importRoute, assetsRoute, accountsRoute, debtsRoute, goalsRoute, planoRoute, simuladorRoute, diagnosticoRoute, profileRoute]),
+    adminAreaRoute.addChildren([adminRoute]),
   ]),
   history: createHashHistory(),
 })

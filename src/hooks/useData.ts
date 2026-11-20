@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useAuth } from '@/lib/auth'
 import { supabase, type Category, type Transaction, type Asset, type Debt, type ImportBatch, type UserPlan, type NotificationSettings, type RecurringExpense, type HouseholdMember, type Account } from '@/lib/supabase'
 import { startOfMonth, endOfMonth, format } from 'date-fns'
 
@@ -504,22 +505,10 @@ export function useNotificationSettings() {
 }
 
 // ─── User role ──────────────────────────────────────────────
+// Papel do usuário logado, vindo do AuthProvider (lido uma vez por login).
 export function useUserRole() {
-  const [role,    setRole]    = useState<'user' | 'admin'>('user')
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    (async () => {
-      const userId = await uid()
-      if (!userId) { setLoading(false); return }
-      const { data } = await supabase
-        .from('user_roles').select('role').eq('user_id', userId).maybeSingle()
-      setRole(data?.role ?? 'user')
-      setLoading(false)
-    })()
-  }, [])
-
-  return { role, loading, isAdmin: role === 'admin' }
+  const { role, roleLoading } = useAuth()
+  return { role, loading: roleLoading, isAdmin: role === 'admin' }
 }
 
 // ─── Diagnóstico financeiro ──────────────────────────────────────
