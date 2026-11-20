@@ -117,6 +117,7 @@ export function AdminPage() {
   const [showDispatch, setShowDispatch] = useState(false)
   const [dispatchForm, setDispatchForm] = useState({ templateId: '', titleOverride: '', bodyOverride: '', targetAll: true, sendNow: true, sendAt: '' })
   const [dispatching, setDispatching] = useState(false)
+  const [dispatchError, setDispatchError] = useState<string | null>(null)
   const [refreshing,  setRefreshing]  = useState(false)
 
   const [clientForm, setClientForm] = useState({ nome: '', email: '', senhaCustom: '', usarSenhaCustom: false, vincular: false, vincularEmail: '' })
@@ -168,6 +169,7 @@ export function AdminPage() {
 
   const dispatchNow = async () => {
     setDispatching(true)
+    setDispatchError(null)
     try {
       // 1. Cria registro admin_notification
       const { data: { user } } = await supabase.auth.getUser()
@@ -183,12 +185,23 @@ export function AdminPage() {
 
       // 2. Se envio imediato, chama a Edge Function
       if (dispatchForm.sendNow) {
+        // Autentica com a sessão do admin (validada no servidor); o segredo do cron não fica no front.
         const supaUrl = import.meta.env.VITE_SUPABASE_URL
-        await fetch(`${supaUrl}/functions/v1/send-due-notifications`, {
+        const { data: { session } } = await supabase.auth.getSession()
+        const resp = await fetch(`${supaUrl}/functions/v1/send-due-notifications`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-cron-secret': import.meta.env.VITE_CRON_SECRET ?? '' },
-          body: '{}',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token ?? ''}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY ?? '',
+          },
+          body: JSON.stringify({ mode: 'admin' }),
         })
+        if (!resp.ok) {
+          setDispatchError('O disparo foi registrado, mas o envio imediato falhou. Ele sai no próximo ciclo do cron.')
+          await loadDispatches()
+          return
+        }
       }
 
       setShowDispatch(false)
@@ -418,6 +431,7 @@ export function AdminPage() {
                       className="mt-2 w-full border rounded-xl px-3 py-2 text-sm" style={{ borderColor: 'var(--border)' }} />
                   )}
                 </div>
+                {dispatchError && <p className="text-sm text-red-600">{dispatchError}</p>}
                 <div className="flex gap-2 pt-1">
                   <button onClick={dispatchNow} disabled={dispatching}
                     className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60 flex items-center justify-center gap-2"
