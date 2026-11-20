@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Upload, TrendingDown, TrendingUp, Wallet, CreditCard, SlidersHorizontal, Calculator, ClipboardList,
-  Landmark, LineChart, Users, Menu, PieChart, type LucideIcon,
+  Landmark, LineChart, Users, Menu, PieChart, BellRing, type LucideIcon,
 } from 'lucide-react'
 
 export interface NavItem { to: string; label: string; short: string; Icon: LucideIcon }
@@ -33,14 +33,18 @@ export const CLIENT_TABS = ['/', '/despesas', '/receitas', '/importar']
 // Área do administrador
 export const ADMIN_NAV: NavGroup[] = [
   { label: 'Administração', items: [
-    { to: '/admin', label: 'Clientes e acessos', short: 'Clientes', Icon: Users },
+    { to: '/admin', label: 'Clientes', short: 'Clientes', Icon: Users },
+    { to: '/admin/gestao', label: 'Acessos e notificações', short: 'Gestão', Icon: BellRing },
   ] },
 ]
-export const ADMIN_TABS = ['/admin']
+export const ADMIN_TABS = ['/admin', '/admin/gestao']
 
 export const MoreIcon = Menu
 
-// Ativo na própria rota e nas sub-rotas (ex.: /admin/clientes ativa /admin só quando não há item mais específico)
-export function isActive(pathname: string, to: string) {
-  return pathname === to || (to !== '/' && pathname.startsWith(to + '/'))
+// Ativo na própria rota e nas sub-rotas; quando mais de um casa, vence o mais específico
+// (ex.: /admin/gestao acende "Acessos e notificações", não "Clientes").
+export function isActive(pathname: string, to: string, todos: string[] = []) {
+  const casa = (r: string) => pathname === r || (r !== '/' && pathname.startsWith(r + '/'))
+  if (!casa(to)) return false
+  return !todos.some(r => r !== to && r.length > to.length && casa(r))
 }

@@ -12,6 +12,8 @@ import { DebtsPage } from '@/pages/DebtsPage'
 import { GoalsPage } from '@/pages/GoalsPage'
 import { PlanoPage } from '@/pages/PlanoPage'
 import { AdminPage } from '@/pages/AdminPage'
+import { AdminClientesPage } from '@/pages/AdminClientesPage'
+import { AdminClientePage } from '@/pages/AdminClientePage'
 import { SimuladorPage } from '@/pages/SimuladorPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { DiagnosticoPage } from '@/pages/DiagnosticoPage'
@@ -120,13 +122,15 @@ const simuladorRoute = createRoute({ getParentRoute: () => appRoute, path: '/sim
 const diagnosticoRoute = createRoute({ getParentRoute: () => appRoute, path: '/diagnostico', component: DiagnosticoPage })
 const profileRoute = createRoute({ getParentRoute: () => appRoute, path: '/perfil', component: ProfilePage })
 const adminAreaRoute = createRoute({ getParentRoute: () => rootRoute, id: 'admin-area', component: AdminGuard })
-const adminRoute = createRoute({ getParentRoute: () => adminAreaRoute, path: '/admin', component: AdminPage })
+const adminRoute = createRoute({ getParentRoute: () => adminAreaRoute, path: '/admin', component: AdminClientesPage })
+const adminGestaoRoute = createRoute({ getParentRoute: () => adminAreaRoute, path: '/admin/gestao', component: AdminPage })
+const adminClienteRoute = createRoute({ getParentRoute: () => adminAreaRoute, path: '/admin/clientes/$householdId', component: AdminClientePage })
 
 const router = createRouter({
   routeTree: rootRoute.addChildren([
     authRoute,
     appRoute.addChildren([dashRoute, despesasRoute, receitasRoute, patrimonioRoute, importRoute, assetsRoute, accountsRoute, debtsRoute, goalsRoute, planoRoute, simuladorRoute, diagnosticoRoute, profileRoute]),
-    adminAreaRoute.addChildren([adminRoute]),
+    adminAreaRoute.addChildren([adminRoute, adminGestaoRoute, adminClienteRoute]),
   ]),
   history: createHashHistory(),
 })

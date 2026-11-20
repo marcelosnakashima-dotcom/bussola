@@ -38,7 +38,8 @@ export function InteractiveDonut({ items, centerLabel, onSelect, selected, size 
   })
 
   return (
-    <div className={`flex ${legend ? 'flex-col sm:flex-row' : 'flex-col'} items-center gap-5`}>
+    <div className="@container">
+    <div className={`flex ${legend ? 'flex-col @[440px]:flex-row' : 'flex-col'} items-center gap-5`}>
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`${centerLabel}: ${format(total)}`}>
           <defs>
@@ -94,6 +95,7 @@ export function InteractiveDonut({ items, centerLabel, onSelect, selected, size 
           })}
         </ul>
       )}
+    </div>
     </div>
   )
 }

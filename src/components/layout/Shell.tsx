@@ -57,6 +57,7 @@ export function Shell({ area, groups, tabs, children }: ShellProps) {
   }, [])
 
   const allItems = groups.flatMap(g => g.items)
+  const allTos = allItems.map(i => i.to)
   const tabItems = tabs.map(t => allItems.find(i => i.to === t)).filter((i): i is NonNullable<typeof i> => !!i)
 
   // Atalho para a outra área (só para admin)
@@ -73,7 +74,7 @@ export function Shell({ area, groups, tabs, children }: ShellProps) {
           {g.label && <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">{g.label}</p>}
           <div className="flex flex-col gap-0.5">
             {g.items.map(({ to, label, Icon }) => {
-              const active = isActive(pathname, to)
+              const active = isActive(pathname, to, allTos)
               return (
                 <Link key={to} to={to} onClick={onNavigate} aria-current={active ? 'page' : undefined}
                   className={`relative flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
@@ -176,7 +177,7 @@ export function Shell({ area, groups, tabs, children }: ShellProps) {
         style={{ background: 'var(--chrome)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }} aria-label="Atalhos">
         <ul className="grid" style={{ gridTemplateColumns: `repeat(${tabItems.length + 1}, minmax(0, 1fr))` }}>
           {tabItems.map(({ to, short, Icon }) => {
-            const active = isActive(pathname, to)
+            const active = isActive(pathname, to, allTos)
             return (
               <li key={to}>
                 <Link to={to} aria-current={active ? 'page' : undefined}

@@ -7,13 +7,13 @@ export function Segmented<T extends string>({ value, onChange, options, label }:
 }) {
   return (
     <div role="radiogroup" aria-label={label}
-      className="inline-flex rounded-xl border border-line bg-surface-2 p-0.5">
+      className="inline-flex max-w-full overflow-x-auto rounded-xl border border-line bg-surface-2 p-0.5">
       {options.map(o => {
         const active = o.value === value
         return (
           <button key={o.value} type="button" role="radio" aria-checked={active}
             onClick={() => onChange(o.value)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-[10px] transition-colors ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-[10px] whitespace-nowrap shrink-0 transition-colors ${
               active ? 'bg-surface text-ink' : 'text-muted hover:text-ink'}`}
             style={active ? { boxShadow: 'var(--shadow-sm)' } : undefined}>
             {o.label}

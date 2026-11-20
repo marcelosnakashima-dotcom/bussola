@@ -1,3 +1,4 @@
+import { useSearch } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 import {
   ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -21,7 +22,10 @@ const VAZIO: ConteudoPlano = { diagnostico: null, metodo: null, caixa: null, cor
 
 export function PlanoPage() {
   const { isAdmin } = useUserRole()
-  const [alvo, setAlvo] = useState<string | null>(null)
+  // admin pode chegar com ?household=<id> (botão "Abrir o plano" no resumo do cliente)
+  const pedido = (useSearch({ strict: false }) as { household?: unknown }).household
+  const [alvo, setAlvo] = useState<string | null>(
+    typeof pedido === 'string' && /^[0-9a-f-]{36}$/i.test(pedido) ? pedido : null)
   const households = usePlanoHouseholds(isAdmin)
   const { dados, semPlano, loading, error, fecharMes, responder } = usePlano(isAdmin ? alvo : null)
 
