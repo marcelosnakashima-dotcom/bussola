@@ -4,6 +4,11 @@
 // 2. Disparo manual de admin_notifications pendentes (roda sempre)
 // 3. Cron semanal (resumo do que vence nos próximos 7 dias) — mode 'weekly'
 // 4. Cron mensal (fechamento do mês anterior) — mode 'monthly'
+//
+// Autenticação (o segredo do cron NUNCA vai para o front):
+// - Cron: cabeçalho x-cron-secret = secret CRON_SECRET (só no servidor, 32+ caracteres).
+// - Painel admin: Authorization: Bearer <sessão> de um usuário com role 'admin' em user_roles.
+//   Nesse caso só processa as notificações de admin pendentes (mode 'admin').
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
@@ -12,13 +17,40 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY")!;
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY")!;
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:contato@bussola.app";
-const CRON_SECRET = Deno.env.get("CRON_SECRET")!;
+const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 // ─── helpers ───────────────────────────────────────────────
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
+};
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
+
+// comparação em tempo constante
+function safeEqual(a: string, b: string) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function autorizar(req: Request): Promise<"cron" | "admin" | null> {
+  const cron = req.headers.get("x-cron-secret");
+  if (cron) return CRON_SECRET.length >= 32 && safeEqual(cron, CRON_SECRET) ? "cron" : null;
+  const auth = req.headers.get("Authorization") ?? "";
+  if (!auth.startsWith("Bearer ")) return null;
+  const { data, error } = await supabase.auth.getUser(auth.slice(7));
+  if (error || !data?.user) return null;
+  const { data: role } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id).maybeSingle();
+  return role?.role === "admin" ? "admin" : null;
+}
+
 function clampDay(y: number, m: number, d: number) {
   return Math.min(d, new Date(y, m + 1, 0).getDate());
 }
@@ -234,8 +266,16 @@ async function processMonthlyReport(): Promise<number> {
 
 // ─── Handler principal ─────────────────────────────────────
 Deno.serve(async (req) => {
-  if (req.headers.get("x-cron-secret") !== CRON_SECRET)
-    return new Response("unauthorized", { status: 401 });
+  if (req.method === "OPTIONS") return new Response(null, { status: 200, headers: CORS });
+
+  const quem = await autorizar(req);
+  if (!quem) return json({ error: "unauthorized" }, 401);
+
+  // Admin pelo painel: só as notificações de admin pendentes (não refaz os lembretes diários).
+  if (quem === "admin") {
+    const adminSent = await processAdminNotifications();
+    return json({ ok: true, mode: "admin", admin_sent: adminSent });
+  }
 
   let mode = "daily";
   try {
@@ -243,13 +283,17 @@ Deno.serve(async (req) => {
     if (payload?.mode) mode = payload.mode;
   } catch {
     // sem body ou body vazio: segue com o modo diário padrão
+  }
 
+  // notificações de admin pendentes rodam em todos os modos do cron
+  // (estas linhas tinham sumido no commit b142dc2 e a função não compilava)
+  const adminSent = await processAdminNotifications();
 
   if (mode === "weekly") {
     const weeklyNotified = await processWeeklyDigest();
     return new Response(
       JSON.stringify({ ok: true, mode, admin_sent: adminSent, weekly_notified: weeklyNotified }),
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { ...CORS, "Content-Type": "application/json" } }
     );
   }
 
@@ -257,13 +301,13 @@ Deno.serve(async (req) => {
     const monthlyNotified = await processMonthlyReport();
     return new Response(
       JSON.stringify({ ok: true, mode, admin_sent: adminSent, monthly_notified: monthlyNotified }),
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { ...CORS, "Content-Type": "application/json" } }
     );
   }
 
   const billNotified = await processBillReminders();
   return new Response(
     JSON.stringify({ ok: true, mode, admin_sent: adminSent, bill_notified: billNotified }),
-    { headers: { "Content-Type": "application/json" } }
+    { headers: { ...CORS, "Content-Type": "application/json" } }
   );
 });
