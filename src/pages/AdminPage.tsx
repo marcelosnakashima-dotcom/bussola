@@ -22,10 +22,10 @@ const TRIGGERS = [
 ]
 
 const STATUS_ICON = {
-  pending:   <Clock className="w-4 h-4 text-amber-500" />,
-  sent:      <CheckCircle className="w-4 h-4 text-green-600" />,
-  failed:    <XCircle className="w-4 h-4 text-red-500" />,
-  cancelled: <XCircle className="w-4 h-4 text-gray-400" />,
+  pending:   <Clock className="w-4 h-4 text-warning" />,
+  sent:      <CheckCircle className="w-4 h-4 text-success" />,
+  failed:    <XCircle className="w-4 h-4 text-danger" />,
+  cancelled: <XCircle className="w-4 h-4 text-muted" />,
 }
 
 function TemplateForm({
@@ -270,7 +270,7 @@ export function AdminPage() {
   return (
     <div className="p-4 md:p-8 max-w-screen-xl mx-auto space-y-6">
       <div>
-        <h1 className="font-display text-2xl md:text-3xl" style={{ color: 'var(--ink)' }}>Administração</h1>
+        <h1 className="font-display text-[28px] md:text-[34px] leading-tight" style={{ color: 'var(--ink)' }}>Administração</h1>
         <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>Gerencie templates, disparos de notificação e acessos de clientes.</p>
       </div>
 
@@ -282,7 +282,7 @@ export function AdminPage() {
             style={{ color: tab === t ? 'var(--brand)' : 'var(--muted)', borderColor: tab === t ? 'var(--brand)' : 'transparent' }}>
             {t}
             {t === 'erros' && systemErrors.length > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono text-white" style={{ background: '#DC2626' }}>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono text-white" style={{ background: 'var(--danger)' }}>
                 {systemErrors.length}
               </span>
             )}
@@ -302,18 +302,18 @@ export function AdminPage() {
           </div>
 
           {showAddTmpl && (
-            <div className="rounded-2xl border bg-white p-5" style={{ borderColor: 'var(--border)' }}>
+            <div className="rounded-3xl glass p-5" style={{ borderColor: 'var(--border)' }}>
               <h3 className="font-medium mb-4" style={{ color: 'var(--ink)' }}>Novo template</h3>
               <TemplateForm onSave={saveTemplate} onCancel={() => setShowAddTmpl(false)} />
             </div>
           )}
 
-          <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+          <div className="rounded-3xl glass overflow-hidden" style={{ borderColor: 'var(--border)' }}>
             {templates.length === 0
               ? <div className="p-10 text-center text-sm" style={{ color: 'var(--muted)' }}>Nenhum template cadastrado.</div>
               : <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b" style={{ borderColor: 'var(--border)', background: '#FAFAF8' }}>
+                    <tr className="border-b" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
                       <th className="px-5 py-3 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>TEMPLATE</th>
                       <th className="px-5 py-3 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>CATEGORIA</th>
                       <th className="px-5 py-3 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>GATILHO</th>
@@ -331,7 +331,7 @@ export function AdminPage() {
                             </td>
                           </tr>
                         ) : (
-                          <tr key={t.id} className="border-b hover:bg-gray-50 transition-colors" style={{ borderColor: 'var(--border)' }}>
+                          <tr key={t.id} className="border-b hover:bg-surface-2 transition-colors" style={{ borderColor: 'var(--border)' }}>
                             <td className="px-5 py-3">
                               <div className="flex items-center gap-2">
                                 <span className="text-xl">{t.icon}</span>
@@ -348,18 +348,18 @@ export function AdminPage() {
                               {TRIGGERS.find(tr => tr.value === t.trigger_type)?.label ?? t.trigger_type}
                             </td>
                             <td className="px-5 py-3">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${t.active ? 'text-green-700' : 'text-gray-500'}`}
-                                style={{ background: t.active ? '#DCFCE7' : '#F3F4F6' }}>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${t.active ? 'text-success' : 'text-muted'}`}
+                                style={{ background: t.active ? 'var(--success-soft)' : 'var(--surface-2)' }}>
                                 {t.active ? 'Ativo' : 'Inativo'}
                               </span>
                             </td>
                             <td className="px-5 py-3">
                               <div className="flex items-center gap-1 justify-end">
-                                <button onClick={() => setEditTmpl(t)} className="p-1.5 rounded-lg hover:bg-gray-100">
+                                <button onClick={() => setEditTmpl(t)} className="p-1.5 rounded-lg hover:bg-surface-2">
                                   <Pencil className="w-3.5 h-3.5" style={{ color: 'var(--muted)' }} />
                                 </button>
-                                <button onClick={() => deleteTemplate(t.id)} className="p-1.5 rounded-lg hover:bg-red-50">
-                                  <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                                <button onClick={() => deleteTemplate(t.id)} className="p-1.5 rounded-lg hover:bg-[var(--danger-soft)]">
+                                  <Trash2 className="w-3.5 h-3.5 text-danger" />
                                 </button>
                               </div>
                             </td>
@@ -389,7 +389,7 @@ export function AdminPage() {
           </div>
 
           {showDispatch && (
-            <div className="rounded-2xl border bg-white p-5" style={{ borderColor: 'var(--border)' }}>
+            <div className="rounded-3xl glass p-5" style={{ borderColor: 'var(--border)' }}>
               <h3 className="font-medium mb-4" style={{ color: 'var(--ink)' }}>Novo disparo</h3>
               <div className="space-y-3">
                 <div>
@@ -448,12 +448,12 @@ export function AdminPage() {
             </div>
           )}
 
-          <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+          <div className="rounded-3xl glass overflow-hidden" style={{ borderColor: 'var(--border)' }}>
             {dispatches.length === 0
               ? <div className="p-10 text-center text-sm" style={{ color: 'var(--muted)' }}>Nenhum disparo realizado ainda.</div>
               : <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b" style={{ borderColor: 'var(--border)', background: '#FAFAF8' }}>
+                    <tr className="border-b" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
                       <th className="px-5 py-3 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>STATUS</th>
                       <th className="px-5 py-3 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>TEMPLATE</th>
                       <th className="px-5 py-3 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>AGENDADO PARA</th>
@@ -462,7 +462,7 @@ export function AdminPage() {
                   </thead>
                   <tbody>
                     {dispatches.map(d => (
-                      <tr key={d.id} className="border-b hover:bg-gray-50" style={{ borderColor: 'var(--border)' }}>
+                      <tr key={d.id} className="border-b hover:bg-surface-2" style={{ borderColor: 'var(--border)' }}>
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-2">
                             {STATUS_ICON[d.status]}
@@ -495,7 +495,7 @@ export function AdminPage() {
       {/* Clientes */}
       {tab === 'clientes' && (
         <div className="space-y-4">
-          <div className="rounded-2xl border bg-white p-5 max-w-lg" style={{ borderColor: 'var(--border)' }}>
+          <div className="rounded-3xl glass p-5 max-w-lg" style={{ borderColor: 'var(--border)' }}>
             <h3 className="font-medium mb-1 flex items-center gap-2" style={{ color: 'var(--ink)' }}>
               <UserPlus className="w-4 h-4" /> Criar acesso de cliente
             </h3>
@@ -546,7 +546,7 @@ export function AdminPage() {
                   </p>
                 </div>
               )}
-              {clientError && <p className="text-sm text-red-600">{clientError}</p>}
+              {clientError && <p className="text-sm text-danger">{clientError}</p>}
               <button type="submit" disabled={creatingClient}
                 className="w-full py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60"
                                 style={{ background: 'var(--brand)' }}>
@@ -556,7 +556,7 @@ export function AdminPage() {
           </div>
 
           {clientResult && (
-            <div className="rounded-2xl border p-5 max-w-lg" style={{ borderColor: 'var(--brand)', background: '#F0FDF4' }}>
+            <div className="rounded-2xl border p-5 max-w-lg" style={{ borderColor: 'var(--brand)', background: 'var(--success-soft)' }}>
               <p className="text-sm font-medium mb-3" style={{ color: 'var(--ink)' }}>
                 Acesso criado! Copie e envie ao cliente — a senha não vai aparecer de novo aqui.
               </p>
@@ -570,7 +570,7 @@ export function AdminPage() {
                 <p>Senha: {clientResult.senha}</p>
               </div>
               <button onClick={copyCredentials}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm border bg-white"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm border bg-surface"
                 style={{ borderColor: 'var(--border)' }}>
                 {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 {copied ? 'Copiado!' : 'Copiar credenciais'}
@@ -586,24 +586,24 @@ export function AdminPage() {
             Erros técnicos que aconteceram com clientes (ex: falha no import de PDF) são registrados aqui em vez de aparecer pra eles. Marque como resolvido depois de investigar.
           </p>
           {systemErrors.length === 0 ? (
-            <div className="rounded-2xl border bg-white p-12 text-center" style={{ borderColor: 'var(--border)' }}>
+            <div className="rounded-3xl glass p-12 text-center" style={{ borderColor: 'var(--border)' }}>
               <CheckCircle className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--border)' }} />
               <p className="font-medium" style={{ color: 'var(--ink)' }}>Nenhum erro pendente</p>
             </div>
           ) : (
             <div className="space-y-2">
               {systemErrors.map(e => (
-                <div key={e.id} className="rounded-2xl border bg-white p-4" style={{ borderColor: '#FCA5A5' }}>
+                <div key={e.id} className="rounded-3xl glass p-4" style={{ borderColor: 'var(--danger)' }}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: '#DC2626' }} />
-                        <span className="text-xs font-mono uppercase tracking-wide" style={{ color: '#991B1B' }}>{e.source}</span>
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--danger)' }} />
+                        <span className="text-xs font-mono uppercase tracking-wide" style={{ color: 'var(--danger)' }}>{e.source}</span>
                         <span className="text-xs" style={{ color: 'var(--muted)' }}>{formatDate(e.created_at)}</span>
                       </div>
                       <p className="text-sm font-medium mb-1" style={{ color: 'var(--ink)' }}>{e.message}</p>
                       {e.detail && (
-                        <pre className="text-xs whitespace-pre-wrap break-all p-2 rounded-lg mt-2" style={{ background: '#FEF2F2', color: '#7F1D1D' }}>
+                        <pre className="text-xs whitespace-pre-wrap break-all p-2 rounded-lg mt-2" style={{ background: 'var(--danger-soft)', color: 'var(--danger)' }}>
                           {e.detail}
                         </pre>
                       )}

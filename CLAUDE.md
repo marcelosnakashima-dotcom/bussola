@@ -103,3 +103,9 @@ D1 (`parse-pdf`) e D2 (banco) já foram feitos. Pontos de parada obrigatórios p
 ## Plano e rolling forecast
 
 Tela `/#/plano` (`src/pages/PlanoPage.tsx`, motor em `src/lib/planoForecast.ts`, dados em `plano_*` e `plano_realizado()`): o realizado vem das transações importadas, o plano é carregado pela Arsen (`scripts/plano`). Detalhes, mapa de categorias e ordem de publicação em `docs/PLANO_ROLLING_FORECAST.md`. A migration `20261009120000_plano_rolling_forecast.sql` **não foi aplicada**.
+
+## Repaginada visual (branch `feat/redesign`)
+
+- Identidade: tokens em `src/index.css` (claro e escuro; `--chrome` para fundos escuros que valem nos dois temas), fundo `.aurora`, cartões `.glass`, destaque `.hero`. Tema escolhido no menu (Claro / Escuro / Auto), salvo no navegador e aplicado em `index.html` antes do primeiro desenho.
+- Componentes: `src/components/ui/*` (Card, StatCard, PageHeader, Segmented, MonthPicker…), gráficos interativos em `src/components/charts/*` e `src/components/finance/*`. Cálculos puros em `src/lib/finance.ts` (testados). Novas telas: Despesas, Receitas, Patrimônio; filtros de Despesas/Receitas na URL (`src/pages/search.ts`).
+- Área do admin com layout próprio (`/admin` = clientes, `/admin/clientes/$id` = resumo, `/admin/gestao` = acessos e notificações). Dados via `admin_clientes()` e `admin_cliente_detalhe()` (recusam quem não é admin; abrir um resumo grava em `admin_acessos`). A migration `20261121120000_admin_clientes.sql` **não foi aplicada**: aplicar antes de publicar a área de admin.

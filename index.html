@@ -13,6 +13,16 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="description" content="Veja para onde vai cada real com a régua 50/30/20." />
     <title>Arsen — orientação financeira</title>
+    <script>
+      // Aplica o tema salvo antes do primeiro desenho (evita piscar claro→escuro).
+      (function () {
+        try {
+          var t = localStorage.getItem('arsen.tema') || 'claro';
+          var escuro = t === 'escuro' || (t === 'sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (escuro) document.documentElement.setAttribute('data-theme', 'dark');
+        } catch (e) { /* sem armazenamento: tema claro */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

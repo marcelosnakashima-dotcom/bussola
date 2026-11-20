@@ -104,7 +104,7 @@ export function SimuladorPage() {
   return (
     <div className="p-4 md:p-8 max-w-screen-lg mx-auto space-y-6">
       <div>
-        <h1 className="font-display text-2xl md:text-3xl" style={{ color: 'var(--ink)' }}>
+        <h1 className="font-display text-[28px] md:text-[34px] leading-tight" style={{ color: 'var(--ink)' }}>
           Simulador: financiamento x consórcio
         </h1>
         <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>
@@ -114,7 +114,7 @@ export function SimuladorPage() {
 
       {/* Mensagem de finalização */}
       {sucesso && (
-        <div className="rounded-2xl border-2 p-5 flex items-start gap-3" style={{ borderColor: 'var(--brand)', background: '#F0F7F3' }}>
+        <div className="rounded-2xl border-2 p-5 flex items-start gap-3" style={{ borderColor: 'var(--brand)', background: 'var(--brand-soft)' }}>
           <Check className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--brand)' }} />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium" style={{ color: 'var(--ink)' }}>
@@ -143,7 +143,7 @@ export function SimuladorPage() {
               className="flex flex-col items-center gap-1.5 py-3 rounded-2xl border text-sm font-medium transition-colors"
               style={{
                 borderColor: active ? 'var(--brand)' : 'var(--border)',
-                background:  active ? 'var(--brand)' : 'white',
+                background:  active ? 'var(--brand)' : 'var(--surface)',
                 color:       active ? 'white' : 'var(--ink)',
               }}>
               <Icon className="w-5 h-5" />
@@ -154,7 +154,7 @@ export function SimuladorPage() {
       </div>
 
       {/* Inputs */}
-      <div className="rounded-2xl border bg-white p-5 space-y-4" style={{ borderColor: 'var(--border)' }}>
+      <div className="rounded-3xl glass p-5 space-y-4" style={{ borderColor: 'var(--border)' }}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2">
             <label className="text-xs mb-1.5 block" style={{ color: 'var(--muted)' }}>
@@ -199,7 +199,7 @@ export function SimuladorPage() {
             const maiorCusto = Math.max(custoFin, custoCons)
             const pct = maiorCusto > 0 ? (diff / maiorCusto) * 100 : 0
             const consorcioGanha = custoCons < custoFin
-            const corDestaque = consorcioGanha ? 'var(--brand)' : '#2563EB'
+            const corDestaque = consorcioGanha ? 'var(--brand)' : 'var(--pou)'
             const maisBarato = consorcioGanha ? 'O consórcio' : 'O financiamento'
 
             return (
@@ -222,7 +222,7 @@ export function SimuladorPage() {
 
           <div className="grid md:grid-cols-2 gap-4">
             {/* Financiamento */}
-            <div className="rounded-2xl border bg-white p-5" style={{ borderColor: 'var(--border)', borderLeft: '4px solid #2563EB' }}>
+            <div className="rounded-3xl glass p-5" style={{ borderColor: 'var(--border)', borderLeft: '4px solid #2563EB' }}>
               <h3 className="font-medium mb-3" style={{ color: 'var(--ink)' }}>🏦 Financiamento bancário</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
@@ -245,7 +245,7 @@ export function SimuladorPage() {
                 </div>
                 <div className="flex justify-between pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
                   <span style={{ color: 'var(--muted)' }}>Custo total</span>
-                  <span className="font-display text-lg" style={{ color: '#2563EB' }}>
+                  <span className="font-display text-lg" style={{ color: 'var(--pou)' }}>
                     {formatBRL(comparativo.financiamento.totalPago + comparativo.financiamento.entrada)}
                   </span>
                 </div>
@@ -264,7 +264,7 @@ export function SimuladorPage() {
                     </button>
                     <button onClick={() => contratar('financiamento')} disabled={contratando !== null}
                       className="flex-1 py-2 rounded-lg text-sm text-white disabled:opacity-60"
-                      style={{ background: '#2563EB' }}>
+                      style={{ background: 'var(--pou)' }}>
                       {contratando === 'financiamento' ? 'Confirmando...' : 'Confirmar'}
                     </button>
                   </div>
@@ -272,7 +272,7 @@ export function SimuladorPage() {
               ) : (
                 <button onClick={() => setConfirmando('financiamento')} disabled={contratando !== null || !user}
                   className="w-full mt-4 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60 flex items-center justify-center gap-1.5"
-                  style={{ background: '#2563EB' }}>
+                  style={{ background: 'var(--pou)' }}>
                   {contratado === 'financiamento'
                     ? <><Check className="w-4 h-4" /> Adicionado às despesas</>
                     : 'Contratar este plano'}
@@ -281,7 +281,7 @@ export function SimuladorPage() {
             </div>
 
             {/* Consórcio */}
-            <div className="rounded-2xl border bg-white p-5" style={{ borderColor: 'var(--border)', borderLeft: '4px solid var(--brand)' }}>
+            <div className="rounded-3xl glass p-5" style={{ borderColor: 'var(--border)', borderLeft: '4px solid var(--brand)' }}>
               <h3 className="font-medium mb-3" style={{ color: 'var(--ink)' }}>🤝 Consórcio</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
@@ -338,7 +338,7 @@ export function SimuladorPage() {
             </div>
           </div>
 
-          {erro && <p className="text-sm text-red-600 text-center">{erro}</p>}
+          {erro && <p className="text-sm text-danger text-center">{erro}</p>}
 
           <p className="text-xs text-center" style={{ color: 'var(--muted)' }}>
             Valores estimados com taxas médias de mercado — não são uma oferta ou cotação oficial.

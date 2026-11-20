@@ -1,33 +1,196 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
 
 @import "tailwindcss";
 
+/* ─── Tokens da Arsen ───────────────────────────────────────────────
+   Os nomes antigos (--brand, --canvas, --ink, --muted, --border, --card…)
+   continuam valendo: as telas ainda não migradas usam esses nomes. */
 :root {
-  --brand:    #2A6049;
-  --brand-dk: #1E4535;
-  --brand-lt: #3C7A5C;
-  --canvas:   #F5F0E8;
-  --ink:      #17221B;
-  --ink-lt:   #24352C;
-  --muted:    #6B7280;
-  --border:   #E2DDD4;
-  --card:     #FFFFFF;
-  --danger:   #DC2626;
-  --warning:  #D97706;
-  --success:  #16A34A;
+  --chrome:     #17221B;   /* fundos escuros (menu, destaques) nos dois temas */
+  --brand:      #2A6049;
+  --brand-dk:   #1E4535;
+  --brand-lt:   #3C7A5C;
+  --brand-soft: #E3EFE8;
+
+  --canvas:     #F5F0E8;
+  --surface:    #FFFFFF;
+  --surface-2:  #FAF7F2;
+  --card:       #FFFFFF;
+
+  --ink:        #17221B;
+  --ink-lt:     #24352C;
+  --muted:      #6B7280;
+  --border:     #E2DDD4;
+  --ring:       rgba(42, 96, 73, 0.25);
+
+  --danger:     #DC2626;
+  --danger-soft:#FDECEC;
+  --warning:    #D97706;
+  --warning-soft:#FEF3E2;
+  --success:    #16A34A;
+  --success-soft:#E7F6EC;
+
+  /* grupos da regra 50/30/20 */
+  --nec:        #2A6049;   /* necessidades */
+  --des:        #C2410C;   /* desejos */
+  --pou:        #2563EB;   /* poupança */
+
+  /* paleta categórica dos gráficos */
+  --c1: #2A6049; --c2: #C2410C; --c3: #2563EB; --c4: #A16207;
+  --c5: #7C3AED; --c6: #0E7490; --c7: #BE185D; --c8: #4D7C0F;
+
+  --shadow-sm: 0 1px 2px rgba(23, 34, 27, 0.06);
+  --shadow-md: 0 4px 16px rgba(23, 34, 27, 0.08);
+  --radius:    16px;
+}
+
+/* Tema escuro: preparado, ativado por data-theme="dark" quando todas as telas estiverem migradas */
+:root[data-theme="dark"] {
+  --chrome:     #0B110E;
+  --brand:      #4FA37D;
+  --brand-dk:   #3C8C68;
+  --brand-lt:   #6BBD97;
+  --brand-soft: #18322A;
+  --canvas:     #0F1512;
+  --surface:    #161E1A;
+  --surface-2:  #1B2520;
+  --card:       #161E1A;
+  --ink:        #E9EFEB;
+  --ink-lt:     #C9D4CE;
+  --muted:      #94A39B;
+  --border:     #26312B;
+  --ring:       rgba(79, 163, 125, 0.35);
+  --danger-soft:#3A1616; --warning-soft:#3A2A12; --success-soft:#12301E;
+  --nec: #4FA37D; --des: #F08A4B; --pou: #6EA0FF;
+  --c1: #4FA37D; --c2: #F08A4B; --c3: #6EA0FF; --c4: #E0B341;
+  --c5: #A78BFA; --c6: #38BDF8; --c7: #F472B6; --c8: #A3E635;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+/* Utilitários do Tailwind a partir dos tokens (bg-canvas, bg-surface, text-ink, border-line…) */
+@theme inline {
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--border);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --font-display: 'Fraunces', serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
 }
 
 * { box-sizing: border-box; }
+@layer base {
+  /* campos de formulário seguem o tema (sem isso ficam brancos no escuro) */
+  input, select, textarea { background-color: var(--surface); color: var(--ink); }
+  input::placeholder, textarea::placeholder { color: var(--muted); opacity: 0.8; }
+  select option { background-color: var(--surface); color: var(--ink); }
+  :root[data-theme="dark"] { color-scheme: dark; }
+}
 html, body, #root { height: 100%; margin: 0; padding: 0;
-  font-family: 'Inter', sans-serif;
-  background: var(--canvas); color: var(--ink); }
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--canvas); color: var(--ink);
+  -webkit-font-smoothing: antialiased; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-.font-display { font-family: 'Fraunces', serif; }
+.font-display { font-family: 'Fraunces', serif; letter-spacing: -0.01em; }
 .font-mono    { font-family: 'IBM Plex Mono', monospace; }
+.num          { font-variant-numeric: tabular-nums; }
+
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+/* gráficos: sem a borda de foco no clique do mouse; com foco visível pelo teclado */
+.recharts-surface:focus, .recharts-wrapper:focus { outline: none; }
+.recharts-surface:focus-visible { outline: 2px solid var(--brand); outline-offset: 4px; border-radius: 8px; }
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fade-up 0.35s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up { animation: none; }
+}
+
+/* ─── Identidade v2: fundo "aurora" e vidro ───────────────────────────── */
+:root {
+  --aurora-1: rgba(42, 96, 73, 0.22);   /* verde Arsen */
+  --aurora-2: rgba(194, 65, 12, 0.12);  /* terracota */
+  --aurora-3: rgba(37, 99, 235, 0.10);  /* azul */
+  --glass-bg: rgba(255, 255, 255, 0.58);
+  --glass-border: rgba(255, 255, 255, 0.75);
+  --glass-shadow: 0 10px 30px -12px rgba(23, 34, 27, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --hero-from: #17221B;
+  --hero-to:   #2A6049;
+}
+:root[data-theme="dark"] {
+  --aurora-1: rgba(79, 163, 125, 0.20);
+  --aurora-2: rgba(240, 138, 75, 0.10);
+  --aurora-3: rgba(110, 160, 255, 0.10);
+  --glass-bg: rgba(22, 30, 26, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --hero-from: #0F1512;
+  --hero-to:   #2A6049;
+}
+
+.aurora {
+  background:
+    radial-gradient(900px 520px at 8% -8%, var(--aurora-1), transparent 60%),
+    radial-gradient(700px 480px at 100% 0%, var(--aurora-2), transparent 60%),
+    radial-gradient(800px 600px at 60% 110%, var(--aurora-3), transparent 60%),
+    var(--canvas);
+  background-attachment: fixed;
+}
+
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass { background: var(--surface); }
+}
+
+/* cartão de destaque: gradiente da marca com brilho de vidro */
+.hero {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  background: linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%);
+  box-shadow: 0 20px 40px -18px rgba(23, 34, 27, 0.55);
+}
+.hero::before {
+  content: "";
+  position: absolute; inset: -40% -10% auto auto;
+  width: 60%; aspect-ratio: 1;
+  background: radial-gradient(circle, rgba(255,255,255,0.18), transparent 65%);
+  pointer-events: none;
+}
+.hero::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(255,255,255,0.12);
+  pointer-events: none;
+}
+
+/* realce de elementos interativos de gráfico */
+.lift { transition: transform .18s ease, box-shadow .18s ease; }
+.lift:hover { transform: translateY(-2px); }
+@media (prefers-reduced-motion: reduce) {
+  .lift, .lift:hover { transition: none; transform: none; }
 }

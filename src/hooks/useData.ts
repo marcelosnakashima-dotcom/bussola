@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useAuth } from '@/lib/auth'
 import { supabase, type Category, type Transaction, type Asset, type Debt, type ImportBatch, type UserPlan, type NotificationSettings, type RecurringExpense, type HouseholdMember, type Account } from '@/lib/supabase'
 import { startOfMonth, endOfMonth, format } from 'date-fns'
 
@@ -153,6 +154,45 @@ export async function findExistingExternalIds(accountId: string, ids: string[]):
     for (const r of data ?? []) if (r.external_id) found.add(r.external_id as string)
   }
   return found
+}
+
+// ─── Lançamentos de um intervalo de meses (Home, Despesas, Receitas) ─────────
+// Só despesas e receitas confirmadas; paginado (o PostgREST devolve no máximo 1.000 linhas por vez).
+export function useTransactionsRange(fromMonth: string, toMonth: string) {
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    const householdId = await myHouseholdId()
+    if (!householdId) { setTransactions([]); setLoading(false); return }
+    const [ty, tm] = toMonth.split('-').map(Number)
+    const fim = `${toMonth}-${String(new Date(Date.UTC(ty, tm, 0)).getUTCDate()).padStart(2, '0')}`
+    const out: Transaction[] = []
+    for (let from = 0; ; from += 1000) {
+      const { data, error: err } = await supabase
+        .from('transactions')
+        .select('id, data, descricao, categoria_id, tipo, valor, status, account_id, origem, user_id, household_id, created_at')
+        .eq('household_id', householdId)
+        .eq('status', 'confirmada')
+        .in('tipo', ['despesa', 'receita'])
+        .gte('data', `${fromMonth}-01`)
+        .lte('data', fim)
+        .order('data', { ascending: false })
+        .order('id')
+        .range(from, from + 999)
+      if (err) { setError(err.message); setLoading(false); return }
+      out.push(...((data ?? []) as Transaction[]))
+      if (!data || data.length < 1000) break
+    }
+    setTransactions(out)
+    setLoading(false)
+  }, [fromMonth, toMonth])
+
+  useEffect(() => { load() }, [load])
+  return { transactions, loading, error, refresh: load }
 }
 
 // ─── Summary ───────────────────────────────────────────────
@@ -504,22 +544,10 @@ export function useNotificationSettings() {
 }
 
 // ─── User role ──────────────────────────────────────────────
+// Papel do usuário logado, vindo do AuthProvider (lido uma vez por login).
 export function useUserRole() {
-  const [role,    setRole]    = useState<'user' | 'admin'>('user')
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    (async () => {
-      const userId = await uid()
-      if (!userId) { setLoading(false); return }
-      const { data } = await supabase
-        .from('user_roles').select('role').eq('user_id', userId).maybeSingle()
-      setRole(data?.role ?? 'user')
-      setLoading(false)
-    })()
-  }, [])
-
-  return { role, loading, isAdmin: role === 'admin' }
+  const { role, roleLoading } = useAuth()
+  return { role, loading: roleLoading, isAdmin: role === 'admin' }
 }
 
 // ─── Diagnóstico financeiro ──────────────────────────────────────

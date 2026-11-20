@@ -88,7 +88,7 @@ export function NotificationSettings() {
   if (!supported || loading) return null
 
   return (
-    <div className="rounded-2xl border bg-white p-5" style={{ borderColor: 'var(--border)' }}>
+    <div className="rounded-3xl glass p-5" style={{ borderColor: 'var(--border)' }}>
       <div className="flex items-center gap-2 mb-4">
         {permission === 'granted' && settings?.enabled
           ? <Bell className="w-4 h-4" style={{ color: 'var(--brand)' }} />
@@ -101,7 +101,7 @@ export function NotificationSettings() {
 
       {iosNotStandalone && (
         <div className="rounded-lg px-3 py-2 mb-3 text-xs leading-relaxed"
-          style={{ background: '#FEF3C7', color: '#92400E' }}>
+          style={{ background: 'var(--warning-soft)', color: 'var(--warning)' }}>
           Para receber notificações no iPhone, adicione à <strong>Tela de Início</strong> pelo
           Safari (Compartilhar → "Adicionar à Tela de Início") e abra pelo ícone.
         </div>
@@ -142,14 +142,14 @@ export function NotificationSettings() {
         )}
 
         {permission === 'denied' && (
-          <p className="text-xs text-red-600">
+          <p className="text-xs text-danger">
             Notificações bloqueadas. Habilite nas configurações do sistema.
           </p>
         )}
 
         {msg && (
-          <p className={`text-xs leading-relaxed ${msg.includes('✓') ? 'text-green-700' : ''}`}
-            style={{ color: msg.includes('✓') ? '#15803D' : 'var(--muted)' }}>
+          <p className={`text-xs leading-relaxed ${msg.includes('✓') ? 'text-success' : ''}`}
+            style={{ color: msg.includes('✓') ? 'var(--success)' : 'var(--muted)' }}>
             {msg}
           </p>
         )}

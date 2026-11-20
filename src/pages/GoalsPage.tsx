@@ -3,9 +3,9 @@ import { useSummary, usePlan } from '@/hooks/useData'
 import { formatBRL } from '@/lib/supabase'
 
 const CLASSES = [
-  { key: 'necessidade' as const, label: 'Necessidades', desc: 'Moradia, transporte, saúde, alimentação básica', color: '#2A6049', default: 50 },
-  { key: 'desejo'      as const, label: 'Desejos',      desc: 'Lazer, restaurantes, assinaturas, roupas',     color: '#D97706', default: 30 },
-  { key: 'poupanca'   as const, label: 'Poupança',      desc: 'Reserva de emergência, investimentos',         color: '#2563EB', default: 20 },
+  { key: 'necessidade' as const, label: 'Necessidades', desc: 'Moradia, transporte, saúde, alimentação básica', color: 'var(--brand)', default: 50 },
+  { key: 'desejo'      as const, label: 'Desejos',      desc: 'Lazer, restaurantes, assinaturas, roupas',     color: 'var(--warning)', default: 30 },
+  { key: 'poupanca'   as const, label: 'Poupança',      desc: 'Reserva de emergência, investimentos',         color: 'var(--pou)', default: 20 },
 ]
 
 export function GoalsPage() {
@@ -42,7 +42,7 @@ export function GoalsPage() {
     <div className="p-4 md:p-8 max-w-screen-md mx-auto space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-display text-2xl md:text-3xl" style={{ color: 'var(--ink)' }}>
+          <h1 className="font-display text-[28px] md:text-[34px] leading-tight" style={{ color: 'var(--ink)' }}>
             Metas 50/30/20
           </h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>
@@ -58,7 +58,7 @@ export function GoalsPage() {
 
       {/* Renda base */}
       {editing && (
-        <div className="rounded-2xl border bg-white p-5" style={{ borderColor: 'var(--border)' }}>
+        <div className="rounded-3xl glass p-5" style={{ borderColor: 'var(--border)' }}>
           <label className="text-xs mb-1.5 block" style={{ color: 'var(--muted)' }}>
             Renda base mensal (R$) — deixe vazio para usar o total de receitas do mês
           </label>
@@ -80,7 +80,7 @@ export function GoalsPage() {
         const pctUsed   = meta > 0 ? Math.min(total / meta, 1) : 0
 
         return (
-          <div key={cl.key} className="rounded-2xl border bg-white p-5" style={{ borderColor: 'var(--border)', borderLeft: `4px solid ${cl.color}` }}>
+          <div key={cl.key} className="rounded-3xl glass p-5" style={{ borderColor: 'var(--border)', borderLeft: `4px solid ${cl.color}` }}>
             <div className="flex items-center justify-between mb-1">
               <div>
                 <h3 className="font-medium" style={{ color: 'var(--ink)' }}>{cl.label}</h3>
@@ -108,11 +108,11 @@ export function GoalsPage() {
               <div className="mt-3 space-y-1.5">
                 <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
                   <div className="h-full rounded-full transition-all"
-                    style={{ width: `${pctUsed * 100}%`, background: over ? '#DC2626' : cl.color }} />
+                    style={{ width: `${pctUsed * 100}%`, background: over ? 'var(--danger)' : cl.color }} />
                 </div>
                 <div className="flex justify-between text-xs font-mono" style={{ color: 'var(--muted)' }}>
                   <span>{formatBRL(total)} gastos</span>
-                  <span className={over ? 'text-red-600 font-medium' : ''}>
+                  <span className={over ? 'text-danger font-medium' : ''}>
                     meta {formatBRL(meta)}
                   </span>
                 </div>
@@ -124,9 +124,9 @@ export function GoalsPage() {
 
       {editing && draft && (
         <div className={`rounded-xl px-4 py-3 text-sm font-medium text-center ${
-          draft.necessidade + draft.desejo + draft.poupanca === 100 ? 'text-green-700' : 'text-red-600'
+          draft.necessidade + draft.desejo + draft.poupanca === 100 ? 'text-success' : 'text-danger'
         }`} style={{
-          background: draft.necessidade + draft.desejo + draft.poupanca === 100 ? '#DCFCE7' : '#FEE2E2'
+          background: draft.necessidade + draft.desejo + draft.poupanca === 100 ? 'var(--success-soft)' : 'var(--danger-soft)'
         }}>
           Total: {draft.necessidade + draft.desejo + draft.poupanca}%
           {draft.necessidade + draft.desejo + draft.poupanca !== 100

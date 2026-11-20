@@ -39,7 +39,7 @@ export function ToastContainer() {
       {toasts.map(t => (
         <div key={t.id}
           className="pointer-events-auto flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white animate-[toast-in_0.2s_ease-out]"
-          style={{ background: t.type === 'success' ? 'var(--brand, #2A6049)' : '#DC2626' }}>
+          style={{ background: t.type === 'success' ? 'var(--brand, #2A6049)' : 'var(--danger)' }}>
           {t.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <XCircle className="w-4 h-4 flex-shrink-0" />}
           {t.message}
         </div>
