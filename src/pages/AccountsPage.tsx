@@ -120,7 +120,7 @@ export function AccountsPage() {
   const renderCard = (a: Account) => (
     <div key={a.id}>
       {editing?.id === a.id
-        ? <div className="rounded-2xl border bg-white p-4 col-span-full" style={{ borderColor: 'var(--border)' }}>
+        ? <div className="rounded-3xl glass p-4 col-span-full" style={{ borderColor: 'var(--border)' }}>
             <AccountForm
               initial={a}
               people={people}
@@ -136,16 +136,16 @@ export function AccountsPage() {
               onCancel={() => setEditing(null)}
             />
           </div>
-        : <div className="rounded-2xl border bg-white p-4 relative group"
+        : <div className="rounded-3xl glass p-4 relative group"
             style={{ borderColor: 'var(--border)', opacity: a.ativo ? 1 : 0.6 }}>
             <div className="absolute top-3 right-3 flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-              <button onClick={() => setEditing(a)} aria-label="Editar conta" className="p-1.5 rounded-lg hover:bg-gray-100">
+              <button onClick={() => setEditing(a)} aria-label="Editar conta" className="p-1.5 rounded-lg hover:bg-surface-2">
                 <Pencil className="w-3.5 h-3.5" style={{ color: 'var(--muted)' }} />
               </button>
               <button onClick={() => toggleAtivo(a)} disabled={busy === a.id}
                 aria-label={a.ativo ? 'Desativar conta' : 'Reativar conta'}
-                className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-50">
-                <Power className="w-3.5 h-3.5" style={{ color: a.ativo ? '#DC2626' : 'var(--brand)' }} />
+                className="p-1.5 rounded-lg hover:bg-surface-2 disabled:opacity-50">
+                <Power className="w-3.5 h-3.5" style={{ color: a.ativo ? 'var(--danger)' : 'var(--brand)' }} />
               </button>
             </div>
             <p className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: 'var(--muted)' }}>
@@ -165,7 +165,7 @@ export function AccountsPage() {
     <div className="p-4 md:p-8 max-w-screen-lg mx-auto space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl md:text-3xl" style={{ color: 'var(--ink)' }}>
+          <h1 className="font-display text-[28px] md:text-[34px] leading-tight" style={{ color: 'var(--ink)' }}>
             Contas e cartões
           </h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>
@@ -180,13 +180,13 @@ export function AccountsPage() {
       </div>
 
       {error && (
-        <div className="rounded-xl border p-3 text-sm" style={{ borderColor: '#FCA5A5', color: '#B91C1C' }}>
+        <div className="rounded-xl border p-3 text-sm" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}>
           Não foi possível carregar as contas: {error}
         </div>
       )}
 
       {showAdd && (
-        <div className="rounded-2xl border bg-white p-5" style={{ borderColor: 'var(--border)' }}>
+        <div className="rounded-3xl glass p-5" style={{ borderColor: 'var(--border)' }}>
           <h3 className="font-medium mb-4" style={{ color: 'var(--ink)' }}>Nova conta ou cartão</h3>
           <AccountForm
             people={people}
@@ -208,11 +208,11 @@ export function AccountsPage() {
         ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="rounded-2xl border p-5 h-24 animate-pulse"
-                style={{ borderColor: 'var(--border)', background: '#f5f5f5' }} />
+                style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }} />
             ))}
           </div>
         : accounts.length === 0 && !showAdd
-        ? <div className="rounded-2xl border bg-white p-12 text-center" style={{ borderColor: 'var(--border)' }}>
+        ? <div className="rounded-3xl glass p-12 text-center" style={{ borderColor: 'var(--border)' }}>
             <Landmark className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--border)' }} />
             <p className="font-medium mb-1" style={{ color: 'var(--ink)' }}>Nenhuma conta cadastrada</p>
             <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>

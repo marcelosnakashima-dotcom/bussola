@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Upload, TrendingDown, TrendingUp, Wallet, CreditCard, SlidersHorizontal, Calculator, ClipboardList,
-  Landmark, LineChart, Users, Menu, type LucideIcon,
+  Landmark, LineChart, Users, Menu, PieChart, type LucideIcon,
 } from 'lucide-react'
 
 export interface NavItem { to: string; label: string; short: string; Icon: LucideIcon }
@@ -16,6 +16,7 @@ export const CLIENT_NAV: NavGroup[] = [
     { to: '/contas', label: 'Contas e cartões', short: 'Contas', Icon: Landmark },
   ] },
   { label: 'Patrimônio', items: [
+    { to: '/patrimonio', label: 'Visão do patrimônio', short: 'Patrimônio', Icon: PieChart },
     { to: '/ativos', label: 'Ativos', short: 'Ativos', Icon: Wallet },
     { to: '/dividas', label: 'Dívidas', short: 'Dívidas', Icon: CreditCard },
   ] },

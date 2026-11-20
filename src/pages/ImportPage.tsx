@@ -56,9 +56,9 @@ interface ParseResult {
 }
 
 const CONFIANCA_STYLE = {
-  alta:    { bg: '#DCFCE7', text: '#15803D', label: 'ALTA' },
-  media:   { bg: '#FEF3C7', text: '#92400E', label: 'MÉDIA' },
-  revisar: { bg: '#FEE2E2', text: '#991B1B', label: 'REVISAR' },
+  alta:    { bg: 'var(--success-soft)', text: 'var(--success)', label: 'ALTA' },
+  media:   { bg: 'var(--warning-soft)', text: 'var(--warning)', label: 'MÉDIA' },
+  revisar: { bg: 'var(--danger-soft)', text: 'var(--danger)', label: 'REVISAR' },
 }
 
 export function ImportPage() {
@@ -598,7 +598,7 @@ export function ImportPage() {
   return (
     <div className="p-4 md:p-8 max-w-screen-xl mx-auto space-y-6">
       <div>
-        <h1 className="font-display text-2xl md:text-3xl" style={{ color: 'var(--ink)' }}>
+        <h1 className="font-display text-[28px] md:text-[34px] leading-tight" style={{ color: 'var(--ink)' }}>
           Importar despesas
         </h1>
         <p className="text-sm mt-0.5 flex items-center gap-1.5" style={{ color: 'var(--muted)' }}>
@@ -615,7 +615,7 @@ export function ImportPage() {
           return (
             <div key={n} className="flex items-center gap-2">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0`}
-                style={{ background: done ? 'var(--brand)' : active ? 'var(--ink)' : 'var(--border)', color: done || active ? '#fff' : 'var(--muted)' }}>
+                style={{ background: done ? 'var(--brand)' : active ? 'var(--chrome)' : 'var(--border)', color: done || active ? '#fff' : 'var(--muted)' }}>
                 {done ? '✓' : n}
               </div>
               <span className={`text-xs hidden sm:block ${active ? 'font-medium' : ''}`}
@@ -628,7 +628,7 @@ export function ImportPage() {
 
       {/* Step 1: Upload */}
       {step === 1 && (
-        <div className="rounded-2xl border bg-white p-5 space-y-2" style={{ borderColor: 'var(--border)' }}>
+        <div className="rounded-3xl glass p-5 space-y-2" style={{ borderColor: 'var(--border)' }}>
           <label className="text-sm font-medium block" style={{ color: 'var(--ink)' }}>
             De qual conta é este arquivo?
           </label>
@@ -678,14 +678,14 @@ export function ImportPage() {
 
       {/* Histórico de importações */}
       {step === 1 && batches.length > 0 && (
-        <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+        <div className="rounded-3xl glass overflow-hidden" style={{ borderColor: 'var(--border)' }}>
           <div className="px-5 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
             <h3 className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Já importado</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b" style={{ borderColor: 'var(--border)', background: '#FAFAF8' }}>
+                <tr className="border-b" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
                   <th className="px-5 py-2.5 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>ARQUIVO</th>
                   <th className="px-5 py-2.5 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>PERÍODO</th>
                   <th className="px-5 py-2.5 text-left text-[11px] font-mono tracking-wider" style={{ color: 'var(--muted)' }}>IMPORTADO EM</th>
@@ -709,7 +709,7 @@ export function ImportPage() {
                         ? <span className="text-xs">
                             Apagar os {b.quantidade} lançamentos?{' '}
                             <button onClick={() => handleUndo(b.id)} disabled={undoing === b.id}
-                              className="underline font-medium text-red-600 disabled:opacity-50">
+                              className="underline font-medium text-danger disabled:opacity-50">
                               {undoing === b.id ? 'Desfazendo...' : 'Sim, desfazer'}
                             </button>{' '}
                             <button onClick={() => setConfirmUndo(null)} className="underline" style={{ color: 'var(--muted)' }}>Não</button>
@@ -728,7 +728,7 @@ export function ImportPage() {
 
       {/* Step 2: Loading */}
       {step === 2 && (
-        <div className="rounded-2xl border bg-white p-14 text-center" style={{ borderColor: 'var(--border)' }}>
+        <div className="rounded-3xl glass p-14 text-center" style={{ borderColor: 'var(--border)' }}>
           <div className="relative w-16 h-16 mx-auto mb-5">
             <div className="w-16 h-16 rounded-full border-4 border-t-transparent animate-spin"
               style={{ borderColor: 'var(--brand)', borderTopColor: 'transparent' }} />
@@ -751,7 +751,7 @@ export function ImportPage() {
               {result.periodo && <span>{formatDate(result.periodo.inicio)} – {formatDate(result.periodo.fim)}</span>}
               <span className="font-mono">{items.length} transações</span>
               {needsReview > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: '#FEF3C7', color: '#92400E' }}>
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: 'var(--warning-soft)', color: 'var(--warning)' }}>
                   ⚠ {needsReview} para revisar
                 </span>
               )}
@@ -760,18 +760,18 @@ export function ImportPage() {
 
           {/* OFX: avisos, duplicados e sinais do cartão */}
           {format === 'ofx' && ofxNotice && (
-            <div className="rounded-xl px-4 py-3 text-sm flex items-center gap-2" style={{ background: '#FFFBEB', color: '#78350F' }}>
+            <div className="rounded-xl px-4 py-3 text-sm flex items-center gap-2" style={{ background: 'var(--warning-soft)', color: 'var(--warning)' }}>
               <AlertCircle className="w-4 h-4 flex-shrink-0" /> {ofxNotice}
             </div>
           )}
           {format === 'ofx' && items.some(i => i.duplicate) && (
-            <div className="rounded-xl px-4 py-3 text-sm" style={{ background: '#EFF6FF', color: '#1E3A8A' }}>
+            <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'color-mix(in srgb, var(--pou) 12%, transparent)', color: 'var(--pou)' }}>
               {items.filter(i => i.duplicate).length} lançamento{items.filter(i => i.duplicate).length !== 1 ? 's' : ''} já importado{items.filter(i => i.duplicate).length !== 1 ? 's' : ''} antes (mesmo código do banco) e desmarcado{items.filter(i => i.duplicate).length !== 1 ? 's' : ''}.
             </div>
           )}
           {format === 'ofx' && ofxKind === 'cartao' && (signFlipped || looksInverted('cartao', items.map(i => i.tipo))) && (
-            <div className="rounded-xl border px-4 py-3 flex items-center justify-between gap-3 flex-wrap" style={{ borderColor: '#FCD34D', background: '#FFFBEB' }}>
-              <p className="text-sm" style={{ color: '#78350F' }}>
+            <div className="rounded-xl border px-4 py-3 flex items-center justify-between gap-3 flex-wrap" style={{ borderColor: 'var(--warning)', background: 'var(--warning-soft)' }}>
+              <p className="text-sm" style={{ color: 'var(--warning)' }}>
                 {signFlipped
                   ? 'Sinais invertidos: compras agora aparecem como despesa.'
                   : 'A maioria dos lançamentos do cartão aparece como receita. Alguns emissores enviam compras com sinal positivo.'}
@@ -785,8 +785,8 @@ export function ImportPage() {
           {/* Revalidate banner */}
           {format === 'pdf' && corrections.length > 0 && (
             <div className="rounded-xl border px-4 py-3 flex items-center justify-between gap-3 flex-wrap"
-              style={{ background: '#F0FDF4', borderColor: '#86EFAC' }}>
-              <p className="text-sm text-green-800">
+              style={{ background: 'var(--success-soft)', borderColor: 'var(--success)' }}>
+              <p className="text-sm text-success">
                 <strong>{corrections.length} correção{corrections.length > 1 ? 'ões' : ''}</strong> feita{corrections.length > 1 ? 's' : ''} por você.
                 Quer recategorizar transações similares automaticamente?
               </p>
@@ -800,8 +800,8 @@ export function ImportPage() {
           )}
 
           {items.length === 0 ? (
-            <div className="rounded-2xl border bg-white p-12 text-center" style={{ borderColor: 'var(--border)' }}>
-              <AlertCircle className="w-12 h-12 mx-auto mb-3 text-amber-500" />
+            <div className="rounded-3xl glass p-12 text-center" style={{ borderColor: 'var(--border)' }}>
+              <AlertCircle className="w-12 h-12 mx-auto mb-3 text-warning" />
               <p className="font-medium mb-2" style={{ color: 'var(--ink)' }}>Nenhuma transação encontrada</p>
               <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
                 Não foi possível extrair dados deste PDF. Verifique se é um extrato ou fatura válida.
@@ -811,12 +811,12 @@ export function ImportPage() {
               </button>
             </div>
           ) : (
-            <div className="rounded-2xl border bg-white overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+            <div className="rounded-3xl glass overflow-hidden" style={{ borderColor: 'var(--border)' }}>
               {/* Table header */}
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[700px]">
                   <thead>
-                    <tr className="border-b" style={{ borderColor: 'var(--border)', background: '#FAFAF8' }}>
+                    <tr className="border-b" style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
                       <th className="w-10 px-3 py-3 text-left">
                         <input type="checkbox"
                           checked={items.filter(i => !i.duplicate).every(i => i.selected)}
@@ -837,7 +837,7 @@ export function ImportPage() {
                       return (
                         <>
                           <tr key={item.id}
-                            className="border-b hover:bg-gray-50 transition-colors"
+                            className="border-b hover:bg-surface-2 transition-colors"
                             style={{
                               borderColor: 'var(--border)',
                               borderLeft: needsCategory(item) && item.confianca === 'revisar' && !item.corrected ? '3px solid #D97706' : '3px solid transparent',
@@ -851,7 +851,7 @@ export function ImportPage() {
                               <div className="font-medium" style={{ color: 'var(--ink)' }}>
                                 {item.descricao}
                                 {item.duplicate && (
-                                  <span className="ml-2 px-1.5 py-px rounded text-[10px] font-medium" style={{ background: '#DBEAFE', color: '#1E40AF' }}>
+                                  <span className="ml-2 px-1.5 py-px rounded text-[10px] font-medium" style={{ background: 'color-mix(in srgb, var(--pou) 14%, transparent)', color: 'var(--pou)' }}>
                                     Já importado
                                   </span>
                                 )}
@@ -864,7 +864,7 @@ export function ImportPage() {
                               {item.transferKind ? (
                                 <div className="mt-1 text-[11px] space-y-1">
                                   <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="px-1.5 py-px rounded font-medium" style={{ background: '#E0E7FF', color: '#3730A3' }}>
+                                    <span className="px-1.5 py-px rounded font-medium" style={{ background: 'color-mix(in srgb, var(--pou) 14%, transparent)', color: 'var(--pou)' }}>
                                       Transferência
                                     </span>
                                     <select value={item.transferKind} aria-label="Tipo de transferência"
@@ -879,13 +879,13 @@ export function ImportPage() {
                                   </div>
                                   {item.motivo && <div style={{ color: 'var(--muted)' }}>{item.motivo}</div>}
                                   {item.pairedExistingId && item.pairedLabel && (
-                                    <div style={{ color: '#3730A3' }}>
+                                    <div style={{ color: 'var(--pou)' }}>
                                       Par com lançamento já gravado: {item.pairedLabel}. Ele também passa a ser transferência.
                                     </div>
                                   )}
                                 </div>
                               ) : !item.resolved && item.suggestedKind ? (
-                                <div className="mt-1 text-[11px] rounded-lg px-2 py-1.5 space-y-1" style={{ background: '#FFFBEB', color: '#78350F' }}>
+                                <div className="mt-1 text-[11px] rounded-lg px-2 py-1.5 space-y-1" style={{ background: 'var(--warning-soft)', color: 'var(--warning)' }}>
                                   <div><strong>Possível transferência ({KIND_LABEL[item.suggestedKind]}).</strong> {item.motivo}</div>
                                   <div className="flex gap-3">
                                     <button type="button" className="underline font-medium"
@@ -920,8 +920,8 @@ export function ImportPage() {
                             <td className="px-3 py-2.5">
                               {item.transferKind ? <span className="text-xs" style={{ color: 'var(--muted)' }}>—</span> : <select
                                 value={item.categoriaId ?? ''}
-                                className={`border rounded-lg px-2 py-1 text-xs outline-none max-w-[180px] ${!item.categoriaId && needsCategory(item) ? 'border-amber-400 bg-amber-50' : ''}`}
-                                style={{ borderColor: item.categoriaId || !needsCategory(item) ? 'var(--border)' : '#F59E0B' }}
+                                className={`border rounded-lg px-2 py-1 text-xs outline-none max-w-[180px] ${!item.categoriaId && needsCategory(item) ? 'border-[var(--warning)] bg-[var(--warning-soft)]' : ''}`}
+                                style={{ borderColor: item.categoriaId || !needsCategory(item) ? 'var(--border)' : 'var(--warning)' }}
                                 onChange={e => setCategory(item.id, e.target.value)}>
                                 <option value="">{needsCategory(item) ? 'Selecione...' : 'Sem categoria'}</option>
                                 {categories.map(c => (
@@ -930,20 +930,20 @@ export function ImportPage() {
                               </select>}
                             </td>
                             <td className="px-3 py-2.5 text-right font-mono font-medium"
-                              style={{ color: item.transferKind ? '#4338CA' : item.tipo === 'despesa' ? '#DC2626' : '#16A34A' }}>
+                              style={{ color: item.transferKind ? 'var(--pou)' : item.tipo === 'despesa' ? 'var(--danger)' : 'var(--success)' }}>
                               {item.transferKind ? '' : item.tipo === 'despesa' ? '-' : '+'}{formatBRL(item.valor)}
                             </td>
                             <td className="px-3 py-2.5">
                               <button onClick={() => setItems(items.filter(i => i.id !== item.id))}
-                                className="p-1 hover:bg-red-50 rounded transition-colors">
-                                <X className="w-4 h-4 text-red-400" />
+                                className="p-1 hover:bg-[var(--danger-soft)] rounded transition-colors">
+                                <X className="w-4 h-4 text-danger" />
                               </button>
                             </td>
                           </tr>
                           {showJust === item.id && item.justificativa && (
                             <tr key={`${item.id}-just`}>
                               <td colSpan={7} className="px-5 py-2 text-xs italic border-b"
-                                style={{ background: '#FFFBEB', color: '#78350F', borderColor: 'var(--border)' }}>
+                                style={{ background: 'var(--warning-soft)', color: 'var(--warning)', borderColor: 'var(--border)' }}>
                                 💡 <strong>Justificativa:</strong> {item.justificativa}
                               </td>
                             </tr>
@@ -957,7 +957,7 @@ export function ImportPage() {
 
               {/* Footer bar */}
               <div className="sticky bottom-0 px-5 py-3 border-t flex items-center justify-between gap-4 flex-wrap"
-                style={{ background: '#fff', borderColor: 'var(--border)' }}>
+                style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                 <div className="text-sm" style={{ color: 'var(--muted)' }}>
                   {selectedItems.length} de {items.length} selecionadas ·{' '}
                   <span className="font-medium" style={{ color: 'var(--ink)' }}>
@@ -965,11 +965,11 @@ export function ImportPage() {
                   </span>
                 </div>
                 {pendingAmbiguous > 0
-                  ? <p className="text-xs font-medium" style={{ color: '#D97706' }}>
+                  ? <p className="text-xs font-medium" style={{ color: 'var(--warning)' }}>
                       Decida os {pendingAmbiguous} lançamento{pendingAmbiguous !== 1 ? 's' : ''} com possível transferência antes de confirmar
                     </p>
                   : !allCategorized && (
-                  <p className="text-xs font-medium" style={{ color: '#D97706' }}>
+                  <p className="text-xs font-medium" style={{ color: 'var(--warning)' }}>
                     Selecione a categoria de todos os itens antes de confirmar
                   </p>
                 )}
@@ -990,8 +990,8 @@ export function ImportPage() {
 
       {/* Step 4: Done */}
       {step === 4 && (
-        <div className="rounded-2xl border bg-white p-14 text-center" style={{ borderColor: 'var(--border)' }}>
-          <CheckCircle className="w-16 h-16 mx-auto mb-4 text-green-600" />
+        <div className="rounded-3xl glass p-14 text-center" style={{ borderColor: 'var(--border)' }}>
+          <CheckCircle className="w-16 h-16 mx-auto mb-4 text-success" />
           <p className="font-display text-3xl mb-2" style={{ color: 'var(--ink)' }}>
             {selectedItems.length} lançamento{selectedItems.length !== 1 ? 's' : ''} importado{selectedItems.length !== 1 ? 's' : ''}!
           </p>
@@ -1013,7 +1013,7 @@ export function ImportPage() {
 
       {error && (
         <div className="rounded-xl px-4 py-3 text-sm flex items-center gap-2"
-          style={{ background: '#FEF2F2', color: '#991B1B' }}>
+          style={{ background: 'var(--danger-soft)', color: 'var(--danger)' }}>
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {error}
         </div>
@@ -1021,7 +1021,7 @@ export function ImportPage() {
 
       {processingIssue && (
         <div className="rounded-xl px-4 py-3 text-sm flex items-center gap-2"
-          style={{ background: '#F5F0E8', color: 'var(--ink)' }}>
+          style={{ background: 'var(--surface-2)', color: 'var(--ink)' }}>
           <Clock className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--muted)' }} />
           Em processamento — pode levar alguns minutos. Se demorar demais, avisamos nossa equipe automaticamente.
         </div>

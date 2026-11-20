@@ -1,17 +1,11 @@
 import { useState } from 'react'
+import { DEBT_LABEL } from '@/lib/labels'
 import { Plus, Pencil, Trash2, CreditCard } from 'lucide-react'
 import { useDebts } from '@/hooks/useData'
 import { showToast } from '@/components/Toast'
 import { formatBRL, type Debt } from '@/lib/supabase'
 
-const TIPO_LABELS: Record<Debt['tipo'], string> = {
-  financiamento_imovel: 'Financiamento imobiliário',
-  financiamento_veiculo: 'Financiamento de veículo',
-  emprestimo: 'Empréstimo',
-  cartao_credito: 'Cartão de crédito',
-  terceiros: 'Dívida com terceiros',
-  outro: 'Outro',
-}
+const TIPO_LABELS = DEBT_LABEL
 
 function DebtForm({
   initial, onSave, onCancel
@@ -85,7 +79,7 @@ export function DebtsPage() {
     <div className="p-4 md:p-8 max-w-screen-lg mx-auto space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-display text-2xl md:text-3xl" style={{ color: 'var(--ink)' }}>
+          <h1 className="font-display text-[28px] md:text-[34px] leading-tight" style={{ color: 'var(--ink)' }}>
             Dívidas e financiamentos
           </h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>
@@ -100,13 +94,13 @@ export function DebtsPage() {
       </div>
 
       {/* Total */}
-      <div className="rounded-2xl border bg-white p-6" style={{ borderColor: 'var(--border)' }}>
+      <div className="rounded-3xl glass p-6" style={{ borderColor: 'var(--border)' }}>
         <p className="text-[10px] font-mono tracking-widest mb-1" style={{ color: 'var(--muted)' }}>
           TOTAL EM DÍVIDAS
         </p>
         {loading
           ? <div className="h-9 w-48 rounded animate-pulse" style={{ background: 'var(--border)' }} />
-          : <p className="font-display text-3xl" style={{ color: '#DC2626' }}>{formatBRL(total)}</p>
+          : <p className="font-display text-3xl" style={{ color: 'var(--danger)' }}>{formatBRL(total)}</p>
         }
         <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
           {debts.length} dívida{debts.length !== 1 ? 's' : ''} cadastrada{debts.length !== 1 ? 's' : ''}
@@ -115,7 +109,7 @@ export function DebtsPage() {
 
       {/* Add form */}
       {showAdd && (
-        <div className="rounded-2xl border bg-white p-5" style={{ borderColor: 'var(--border)' }}>
+        <div className="rounded-3xl glass p-5" style={{ borderColor: 'var(--border)' }}>
           <h3 className="font-medium mb-4" style={{ color: 'var(--ink)' }}>Nova dívida</h3>
           <DebtForm
             onSave={async d => {
@@ -136,12 +130,12 @@ export function DebtsPage() {
       {loading
         ? <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-2xl border bg-white p-5 h-32 animate-pulse"
-                style={{ borderColor: 'var(--border)', background: '#f5f5f5' }} />
+              <div key={i} className="rounded-3xl glass p-5 h-32 animate-pulse"
+                style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }} />
             ))}
           </div>
         : debts.length === 0 && !showAdd
-        ? <div className="rounded-2xl border bg-white p-12 text-center" style={{ borderColor: 'var(--border)' }}>
+        ? <div className="rounded-3xl glass p-12 text-center" style={{ borderColor: 'var(--border)' }}>
             <CreditCard className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--border)' }} />
             <p className="font-medium mb-1" style={{ color: 'var(--ink)' }}>Nenhuma dívida cadastrada</p>
             <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
@@ -157,7 +151,7 @@ export function DebtsPage() {
             {debts.map(d => (
               <div key={d.id}>
                 {editing?.id === d.id
-                  ? <div className="rounded-2xl border bg-white p-4 col-span-2" style={{ borderColor: 'var(--border)' }}>
+                  ? <div className="rounded-3xl glass p-4 col-span-2" style={{ borderColor: 'var(--border)' }}>
                       <DebtForm
                         initial={d}
                         onSave={async upd => {
@@ -172,11 +166,11 @@ export function DebtsPage() {
                         onCancel={() => setEditing(null)}
                       />
                     </div>
-                  : <div className="rounded-2xl border bg-white p-4 relative group" style={{ borderColor: 'var(--border)' }}>
+                  : <div className="rounded-3xl glass p-4 relative group" style={{ borderColor: 'var(--border)' }}>
                       {/* Actions */}
                       <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => setEditing(d)}
-                          className="p-1.5 rounded-lg hover:bg-gray-100">
+                          className="p-1.5 rounded-lg hover:bg-surface-2">
                           <Pencil className="w-3.5 h-3.5" style={{ color: 'var(--muted)' }} />
                         </button>
                         <button onClick={async () => {
@@ -189,15 +183,15 @@ export function DebtsPage() {
                           }
                           setDeleting(null)
                         }}
-                          className="p-1.5 rounded-lg hover:bg-red-50">
-                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                          className="p-1.5 rounded-lg hover:bg-[var(--danger-soft)]">
+                          <Trash2 className="w-3.5 h-3.5 text-danger" />
                         </button>
                       </div>
                       <p className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: 'var(--muted)' }}>
                         {TIPO_LABELS[d.tipo]}
                       </p>
                       <p className="text-sm font-medium truncate mb-2" style={{ color: 'var(--ink)' }}>{d.nome}</p>
-                      <p className="font-display text-xl" style={{ color: '#DC2626' }}>{formatBRL(d.valor)}</p>
+                      <p className="font-display text-xl" style={{ color: 'var(--danger)' }}>{formatBRL(d.valor)}</p>
                       {d.detalhe && (
                         <p className="text-[11px] mt-1 truncate" style={{ color: 'var(--muted)' }}>{d.detalhe}</p>
                       )}

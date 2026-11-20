@@ -74,14 +74,14 @@ export function ProfilePage() {
   return (
     <div className="p-4 md:p-8 max-w-screen-md mx-auto space-y-6">
       <div>
-        <h1 className="font-display text-2xl md:text-3xl" style={{ color: 'var(--ink)' }}>Perfil</h1>
+        <h1 className="font-display text-[28px] md:text-[34px] leading-tight" style={{ color: 'var(--ink)' }}>Perfil</h1>
         <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>
           Sua conta e preferências de notificação.
         </p>
       </div>
 
       {/* Conta */}
-      <div className="rounded-2xl border bg-white p-5" style={{ borderColor: 'var(--border)' }}>
+      <div className="rounded-3xl glass p-5" style={{ borderColor: 'var(--border)' }}>
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-full flex items-center justify-center text-white font-medium flex-shrink-0"
             style={{ background: 'var(--brand)' }}>
@@ -98,13 +98,13 @@ export function ProfilePage() {
         </div>
         <button onClick={signOut}
           className="flex items-center gap-2 text-sm mt-4 pt-4 border-t w-full"
-          style={{ borderColor: 'var(--border)', color: '#DC2626' }}>
+          style={{ borderColor: 'var(--border)', color: 'var(--danger)' }}>
           <LogOut className="w-4 h-4" /> Sair da conta
         </button>
       </div>
 
       {/* Notificações */}
-      <div className="rounded-2xl border bg-white p-5 space-y-5" style={{ borderColor: 'var(--border)' }}>
+      <div className="rounded-3xl glass p-5 space-y-5" style={{ borderColor: 'var(--border)' }}>
         <div className="flex items-center gap-2">
           <Bell className="w-4 h-4" style={{ color: 'var(--brand)' }} />
           <h2 className="font-medium" style={{ color: 'var(--ink)' }}>Notificações</h2>
@@ -126,13 +126,13 @@ export function ProfilePage() {
             {(pushState === 'default' || pushState === 'granted-off' || pushState === 'granted-on') && (
               <button onClick={handleTogglePush} disabled={pushBusy}
                 className="px-3 py-2 rounded-lg text-xs font-medium text-white whitespace-nowrap disabled:opacity-60 flex items-center gap-1.5"
-                style={{ background: pushState === 'granted-on' ? '#DC2626' : 'var(--brand)' }}>
+                style={{ background: pushState === 'granted-on' ? 'var(--danger)' : 'var(--brand)' }}>
                 {pushState === 'granted-on' ? <BellOff className="w-3.5 h-3.5" /> : <BellRing className="w-3.5 h-3.5" />}
                 {pushBusy ? '...' : pushState === 'granted-on' ? 'Desativar' : 'Ativar'}
               </button>
             )}
           </div>
-          {pushError && <p className="text-xs mt-2" style={{ color: '#DC2626' }}>{pushError}</p>}
+          {pushError && <p className="text-xs mt-2" style={{ color: 'var(--danger)' }}>{pushError}</p>}
         </div>
 
         {/* Avisos de contas a vencer */}
@@ -146,7 +146,7 @@ export function ProfilePage() {
           <button role="switch" aria-checked={enabled} onClick={() => setEnabled(v => !v)}
             className="w-11 h-6 rounded-full relative transition-colors flex-shrink-0"
             style={{ background: enabled ? 'var(--brand)' : 'var(--border)' }}>
-            <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform"
+            <span className="absolute top-0.5 left-0.5 w-5 h-5 bg-surface rounded-full shadow transition-transform"
               style={{ transform: enabled ? 'translateX(20px)' : 'translateX(0)' }} />
           </button>
         </div>

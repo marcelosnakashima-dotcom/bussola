@@ -59,7 +59,7 @@ export function AuthPage() {
   return (
     <div className="min-h-screen grid lg:grid-cols-[1.05fr_1fr] bg-canvas">
       {/* Painel da marca (computador) */}
-      <aside className="hidden lg:flex relative overflow-hidden flex-col justify-between p-12" style={{ background: 'var(--ink)' }}>
+      <aside className="hidden lg:flex relative overflow-hidden flex-col justify-between p-12" style={{ background: 'var(--chrome)' }}>
         <div className="flex items-center gap-3">
           <ArsenLogo className="w-9 h-9" />
           <div>

@@ -94,7 +94,7 @@ export function DespesasPage() {
               return (
                 <button key={c ?? 'todas'} type="button" aria-pressed={ativo} onClick={() => set({ classe: c, categoria: undefined })}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors"
-                  style={ativo ? { background: c ? CLASS_COLOR[c] : 'var(--ink)', borderColor: 'transparent', color: '#fff' } : { borderColor: 'var(--border)', color: 'var(--ink)' }}>
+                  style={ativo ? { background: c ? CLASS_COLOR[c] : 'var(--chrome)', borderColor: 'transparent', color: '#fff' } : { borderColor: 'var(--border)', color: 'var(--ink)' }}>
                   {c && !ativo && <span className="w-2 h-2 rounded-full" style={{ background: CLASS_COLOR[c] }} />}
                   {c ? CLASS_LABEL[c] : 'Todas'}
                 </button>

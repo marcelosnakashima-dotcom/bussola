@@ -5,9 +5,9 @@ import { Secao, bordaCartao, cartao } from './PlanoSecoes'
 
 const ROTULO_STATUS = { aberta: 'Aberta', em_analise: 'Respondida, em análise', resolvida: 'Resolvida' } as const
 const COR_STATUS = {
-  aberta: { bg: '#FEF3C7', fg: '#92400E' },
-  em_analise: { bg: '#DBEAFE', fg: '#1E40AF' },
-  resolvida: { bg: '#CFEBDA', fg: '#17221B' },
+  aberta: { bg: 'var(--warning-soft)', fg: 'var(--warning)' },
+  em_analise: { bg: 'color-mix(in srgb, var(--pou) 14%, transparent)', fg: 'var(--pou)' },
+  resolvida: { bg: 'var(--brand-soft)', fg: 'var(--ink)' },
 } as const
 
 function CartaoPendencia({ p, onResponder, podeResponder: permitido }: { p: Pendencia; onResponder: (id: string, resposta: string) => Promise<void>; podeResponder: boolean }) {
@@ -52,10 +52,10 @@ function CartaoPendencia({ p, onResponder, podeResponder: permitido }: { p: Pend
             </button>
             {p.resposta && <button onClick={() => { setTexto(p.resposta ?? ''); setEditando(false) }} className="text-sm underline" style={{ color: 'var(--muted)' }}>Cancelar</button>}
           </div>
-          {erro && <p className="text-sm text-red-700">{erro}</p>}
+          {erro && <p className="text-sm text-danger">{erro}</p>}
         </div>
       ) : (
-        <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: '#F5F0E8', color: 'var(--ink)' }}>
+        <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: 'var(--surface-2)', color: 'var(--ink)' }}>
           <p className="text-[11px] mb-1" style={{ color: 'var(--muted)' }}>Resposta enviada{p.respondidoEm ? ` em ${new Date(p.respondidoEm).toLocaleDateString('pt-BR')}` : ''}</p>
           <p className="whitespace-pre-wrap">{p.resposta}</p>
           {permitido && <button onClick={() => setEditando(true)} className="text-xs underline mt-2" style={{ color: 'var(--brand)' }}>Editar resposta</button>}
@@ -64,7 +64,7 @@ function CartaoPendencia({ p, onResponder, podeResponder: permitido }: { p: Pend
 
       {p.responsavel === 'arsen' || p.status === 'resolvida' ? (
         p.resposta && (
-          <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: '#F5F0E8', color: 'var(--ink)' }}>
+          <div className="mt-3 rounded-xl p-3 text-sm" style={{ background: 'var(--surface-2)', color: 'var(--ink)' }}>
             <p className="text-[11px] mb-1" style={{ color: 'var(--muted)' }}>Resposta registrada</p>
             <p className="whitespace-pre-wrap">{p.resposta}</p>
           </div>

@@ -6,6 +6,7 @@
    Os nomes antigos (--brand, --canvas, --ink, --muted, --border, --card…)
    continuam valendo: as telas ainda não migradas usam esses nomes. */
 :root {
+  --chrome:     #17221B;   /* fundos escuros (menu, destaques) nos dois temas */
   --brand:      #2A6049;
   --brand-dk:   #1E4535;
   --brand-lt:   #3C7A5C;
@@ -45,6 +46,7 @@
 
 /* Tema escuro: preparado, ativado por data-theme="dark" quando todas as telas estiverem migradas */
 :root[data-theme="dark"] {
+  --chrome:     #0B110E;
   --brand:      #4FA37D;
   --brand-dk:   #3C8C68;
   --brand-lt:   #6BBD97;
@@ -85,6 +87,13 @@
 }
 
 * { box-sizing: border-box; }
+@layer base {
+  /* campos de formulário seguem o tema (sem isso ficam brancos no escuro) */
+  input, select, textarea { background-color: var(--surface); color: var(--ink); }
+  input::placeholder, textarea::placeholder { color: var(--muted); opacity: 0.8; }
+  select option { background-color: var(--surface); color: var(--ink); }
+  :root[data-theme="dark"] { color-scheme: dark; }
+}
 html, body, #root { height: 100%; margin: 0; padding: 0;
   font-family: 'Inter', system-ui, sans-serif;
   background: var(--canvas); color: var(--ink);

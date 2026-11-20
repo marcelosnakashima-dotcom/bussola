@@ -1,7 +1,8 @@
 import { type ReactNode, useEffect, useState } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import * as Dialog from '@radix-ui/react-dialog'
-import { LogOut, PanelLeftClose, PanelLeftOpen, User, ShieldCheck, ArrowLeftRight, X } from 'lucide-react'
+import { LogOut, PanelLeftClose, PanelLeftOpen, User, ShieldCheck, ArrowLeftRight, X, Sun, Moon, Monitor } from 'lucide-react'
+import { aplicarTema, lerTema, salvarTema, type TemaPref } from '@/lib/theme'
 import { ArsenLogo } from '@/components/ArsenLogo'
 import { ToastContainer } from '@/components/Toast'
 import { useAuth } from '@/lib/auth'
@@ -37,6 +38,16 @@ export function Shell({ area, groups, tabs, children }: ShellProps) {
   })
 
   const [maisAberto, setMaisAberto] = useState(false)
+  const [tema, setTema] = useState<TemaPref>(() => lerTema())
+  const trocarTema = (t: TemaPref) => { setTema(t); salvarTema(t) }
+  // em "sistema", acompanha a troca de claro/escuro do aparelho
+  useEffect(() => {
+    if (tema !== 'sistema') return
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const f = () => aplicarTema('sistema')
+    mq.addEventListener('change', f)
+    return () => mq.removeEventListener('change', f)
+  }, [tema])
   useEffect(() => { setMaisAberto(false) }, [pathname])
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 768px)')
@@ -101,6 +112,14 @@ export function Shell({ area, groups, tabs, children }: ShellProps) {
           <User className="w-4 h-4" /> Perfil
         </Link>
       )}
+      <div role="radiogroup" aria-label="Tema" className="mx-2 my-1 grid grid-cols-3 gap-1 rounded-xl bg-white/5 p-1">
+        {([['claro', 'Claro', Sun], ['escuro', 'Escuro', Moon], ['sistema', 'Auto', Monitor]] as const).map(([v, l, I]) => (
+          <button key={v} type="button" role="radio" aria-checked={tema === v} onClick={() => trocarTema(v)} title={`Tema ${l.toLowerCase()}`}
+            className={`flex items-center justify-center gap-1 rounded-lg py-1.5 text-[11px] transition-colors ${tema === v ? 'bg-white/15 text-white' : 'text-white/50 hover:text-white'}`}>
+            <I className="w-3.5 h-3.5" /> {l}
+          </button>
+        ))}
+      </div>
       <button onClick={signOut}
         className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-white/60 hover:text-white hover:bg-white/5 text-left">
         <LogOut className="w-4 h-4" /> Sair
@@ -122,7 +141,7 @@ export function Shell({ area, groups, tabs, children }: ShellProps) {
     <div className="min-h-screen flex bg-canvas">
       {/* Menu lateral (desktop) */}
       <aside className={`${menuOculto ? 'hidden' : 'hidden md:flex'} w-[248px] shrink-0 flex-col sticky top-0 h-screen px-3 py-5 overflow-y-auto`}
-        style={{ background: 'linear-gradient(180deg, var(--ink) 0%, color-mix(in srgb, var(--ink) 85%, var(--brand)) 100%)' }}>
+        style={{ background: 'linear-gradient(180deg, var(--chrome) 0%, color-mix(in srgb, var(--chrome) 82%, var(--brand)) 100%)' }}>
         <div className="px-2 flex items-center justify-between mb-6">
           <Brand />
           <button onClick={alternarMenu} title="Ocultar o menu" aria-label="Ocultar o menu"
@@ -137,14 +156,14 @@ export function Shell({ area, groups, tabs, children }: ShellProps) {
       {menuOculto && (
         <button onClick={alternarMenu} title="Mostrar o menu" aria-label="Mostrar o menu"
           className="hidden md:flex fixed left-4 bottom-4 z-30 items-center gap-2 rounded-xl px-3 py-2 text-xs text-white"
-          style={{ background: 'var(--ink)', boxShadow: 'var(--shadow-md)' }}>
+          style={{ background: 'var(--chrome)', boxShadow: 'var(--shadow-md)' }}>
           <PanelLeftOpen className="w-4 h-4" /> Menu
         </button>
       )}
 
       {/* Topo (celular) */}
       <header className="md:hidden fixed top-0 inset-x-0 z-20 flex items-center justify-between px-4 h-14"
-        style={{ background: 'var(--ink)' }}>
+        style={{ background: 'var(--chrome)' }}>
         <Brand />
       </header>
 
@@ -154,7 +173,7 @@ export function Shell({ area, groups, tabs, children }: ShellProps) {
 
       {/* Barra inferior (celular): atalhos + Mais */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 border-t border-white/10"
-        style={{ background: 'var(--ink)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }} aria-label="Atalhos">
+        style={{ background: 'var(--chrome)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }} aria-label="Atalhos">
         <ul className="grid" style={{ gridTemplateColumns: `repeat(${tabItems.length + 1}, minmax(0, 1fr))` }}>
           {tabItems.map(({ to, short, Icon }) => {
             const active = isActive(pathname, to)
@@ -177,7 +196,7 @@ export function Shell({ area, groups, tabs, children }: ShellProps) {
               <Dialog.Portal>
                 <Dialog.Overlay className="md:hidden fixed inset-0 z-40 bg-black/40" />
                 <Dialog.Content className="md:hidden fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-3xl px-4 pt-4 pb-8"
-                  style={{ background: 'var(--ink)' }}>
+                  style={{ background: 'var(--chrome)' }}>
                   <div className="flex items-center justify-between mb-4 px-1">
                     <Dialog.Title className="text-white font-medium">Menu</Dialog.Title>
                     <Dialog.Close className="p-2 text-white/60" aria-label="Fechar"><X className="w-5 h-5" /></Dialog.Close>

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   addMonths, lastMonths, daysInMonth, monthBounds, periodMonths, monthlySeries, byCategory, resumo503020,
   filterDespesas, dailyCumulative, incomeSources, fonteKey, groupByDay, monthLabel, SEM_CATEGORIA,
-  dailyTotals, firstWeekday, projecaoFimDoMes, isDespesa,
+  dailyTotals, firstWeekday, projecaoFimDoMes, isDespesa, somaPorTipo, mesesDeReserva,
   type Tx, type CatInfo,
 } from './finance'
 
@@ -150,5 +150,16 @@ describe('mapa de calor e projeção', () => {
   it('projeção linear até o fim do mês', () => {
     expect(projecaoFimDoMes(1000, 10, 30)).toBe(3000)
     expect(projecaoFimDoMes(1000, 0, 30)).toBe(0)
+  })
+})
+
+describe('patrimônio', () => {
+  it('soma por tipo e ordena', () => {
+    expect(somaPorTipo([{ tipo: 'reserva', valor: 100 }, { tipo: 'imovel', valor: '500' }, { tipo: 'reserva', valor: 50.5 }]))
+      .toEqual([{ tipo: 'imovel', valor: 500 }, { tipo: 'reserva', valor: 150.5 }])
+  })
+  it('meses de reserva pela média dos meses com despesa', () => {
+    expect(mesesDeReserva(6000, [2000, 0, 1000])).toBe(4)
+    expect(mesesDeReserva(6000, [0, 0])).toBeNull()
   })
 })

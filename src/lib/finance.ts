@@ -253,3 +253,19 @@ export function projecaoFimDoMes(acumuladoAteHoje: number, ateDia: number, diasN
   if (ateDia <= 0) return 0
   return Math.round((acumuladoAteHoje / ateDia) * diasNoMes * 100) / 100
 }
+
+// ─── Patrimônio ─────────────────────────────────────────────────────────
+// Soma por tipo (ativos ou dívidas), maior primeiro.
+export function somaPorTipo<T extends { tipo: string; valor: number | string }>(itens: T[]): { tipo: string; valor: number }[] {
+  const m = new Map<string, number>()
+  for (const i of itens) m.set(i.tipo, (m.get(i.tipo) ?? 0) + (Number(i.valor) || 0))
+  return [...m.entries()].map(([tipo, valor]) => ({ tipo, valor: Math.round(valor * 100) / 100 })).sort((a, b) => b.valor - a.valor)
+}
+
+// Quantos meses de despesas a reserva cobre (média dos meses com despesa). null sem base.
+export function mesesDeReserva(reserva: number, despesasPorMes: number[]): number | null {
+  const comDespesa = despesasPorMes.filter(v => v > 0)
+  if (!comDespesa.length) return null
+  const media = comDespesa.reduce((s, v) => s + v, 0) / comDespesa.length
+  return media > 0 ? reserva / media : null
+}
