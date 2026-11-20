@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Bell, BellOff, BellRing, LogOut, Mail } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { useNotificationSettings } from '@/hooks/useData'
+import { WhatsAppCard } from '@/components/WhatsAppCard'
 import { enablePush, disablePush, getActiveSubscription, pushSupportState, listenForSubscriptionRenewal } from '@/lib/push'
 
 type PushUiState = 'unsupported' | 'default' | 'denied' | 'granted-off' | 'granted-on'
@@ -102,6 +103,9 @@ export function ProfilePage() {
           <LogOut className="w-4 h-4" /> Sair da conta
         </button>
       </div>
+
+      {/* WhatsApp */}
+      <WhatsAppCard />
 
       {/* Notificações */}
       <div className="rounded-2xl border bg-white p-5 space-y-5" style={{ borderColor: 'var(--border)' }}>

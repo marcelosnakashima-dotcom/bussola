@@ -103,3 +103,7 @@ D1 (`parse-pdf`) e D2 (banco) já foram feitos. Pontos de parada obrigatórios p
 ## Plano e rolling forecast
 
 Tela `/#/plano` (`src/pages/PlanoPage.tsx`, motor em `src/lib/planoForecast.ts`, dados em `plano_*` e `plano_realizado()`): o realizado vem das transações importadas, o plano é carregado pela Arsen (`scripts/plano`). Detalhes, mapa de categorias e ordem de publicação em `docs/PLANO_ROLLING_FORECAST.md`. A migration `20261009120000_plano_rolling_forecast.sql` **não foi aplicada**.
+
+## Gastos pelo WhatsApp
+
+Z-API → Edge Function `whatsapp-webhook` (regras puras em `supabase/functions/_shared/whatsapp-core.ts`, testadas) → rascunho → grava só após "sim", com `origem = 'whatsapp'` no household do vínculo. Vínculo do número por código gerado no Perfil (`src/components/WhatsAppCard.tsx`). Segurança, secrets e ordem de publicação em `docs/WHATSAPP_GASTOS.md`. A migration `20261120120000_whatsapp_gastos.sql` **não foi aplicada**.
