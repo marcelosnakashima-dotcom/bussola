@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Upload, Wallet, CreditCard, SlidersHorizontal, Calculator, ClipboardList,
+  LayoutDashboard, Upload, TrendingDown, TrendingUp, Wallet, CreditCard, SlidersHorizontal, Calculator, ClipboardList,
   Landmark, LineChart, Users, Menu, type LucideIcon,
 } from 'lucide-react'
 
@@ -10,6 +10,8 @@ export interface NavGroup { label?: string; items: NavItem[] }
 export const CLIENT_NAV: NavGroup[] = [
   { items: [{ to: '/', label: 'Visão geral', short: 'Início', Icon: LayoutDashboard }] },
   { label: 'Movimentação', items: [
+    { to: '/despesas', label: 'Despesas', short: 'Despesas', Icon: TrendingDown },
+    { to: '/receitas', label: 'Receitas', short: 'Receitas', Icon: TrendingUp },
     { to: '/importar', label: 'Importar extratos', short: 'Importar', Icon: Upload },
     { to: '/contas', label: 'Contas e cartões', short: 'Contas', Icon: Landmark },
   ] },
@@ -25,7 +27,7 @@ export const CLIENT_NAV: NavGroup[] = [
   ] },
 ]
 // Barra inferior do celular: 4 atalhos + "Mais"
-export const CLIENT_TABS = ['/', '/importar', '/metas', '/plano']
+export const CLIENT_TABS = ['/', '/despesas', '/receitas', '/importar']
 
 // Área do administrador
 export const ADMIN_NAV: NavGroup[] = [

@@ -15,6 +15,9 @@ import { AdminPage } from '@/pages/AdminPage'
 import { SimuladorPage } from '@/pages/SimuladorPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { DiagnosticoPage } from '@/pages/DiagnosticoPage'
+import { DespesasPage } from '@/pages/DespesasPage'
+import { ReceitasPage } from '@/pages/ReceitasPage'
+import { validateMovSearch } from '@/pages/search'
 
 // Le a rota atual direto do hash do navegador (fonte da verdade real),
 // em vez do hook useLocation() do router: esse hook pode refletir, de
@@ -103,6 +106,8 @@ function AdminGuard() {
 
 const appRoute = createRoute({ getParentRoute: () => rootRoute, id: 'app', component: AuthGuard })
 const dashRoute = createRoute({ getParentRoute: () => appRoute, path: '/', component: DashboardPage })
+const despesasRoute = createRoute({ getParentRoute: () => appRoute, path: '/despesas', component: DespesasPage, validateSearch: validateMovSearch })
+const receitasRoute = createRoute({ getParentRoute: () => appRoute, path: '/receitas', component: ReceitasPage, validateSearch: validateMovSearch })
 const importRoute = createRoute({ getParentRoute: () => appRoute, path: '/importar', component: ImportPage })
 const assetsRoute = createRoute({ getParentRoute: () => appRoute, path: '/ativos', component: AssetsPage })
 const accountsRoute = createRoute({ getParentRoute: () => appRoute, path: '/contas', component: AccountsPage })
@@ -118,7 +123,7 @@ const adminRoute = createRoute({ getParentRoute: () => adminAreaRoute, path: '/a
 const router = createRouter({
   routeTree: rootRoute.addChildren([
     authRoute,
-    appRoute.addChildren([dashRoute, importRoute, assetsRoute, accountsRoute, debtsRoute, goalsRoute, planoRoute, simuladorRoute, diagnosticoRoute, profileRoute]),
+    appRoute.addChildren([dashRoute, despesasRoute, receitasRoute, importRoute, assetsRoute, accountsRoute, debtsRoute, goalsRoute, planoRoute, simuladorRoute, diagnosticoRoute, profileRoute]),
     adminAreaRoute.addChildren([adminRoute]),
   ]),
   history: createHashHistory(),

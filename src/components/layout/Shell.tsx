@@ -122,7 +122,7 @@ export function Shell({ area, groups, tabs, children }: ShellProps) {
     <div className="min-h-screen flex bg-canvas">
       {/* Menu lateral (desktop) */}
       <aside className={`${menuOculto ? 'hidden' : 'hidden md:flex'} w-[248px] shrink-0 flex-col sticky top-0 h-screen px-3 py-5 overflow-y-auto`}
-        style={{ background: 'var(--ink)' }}>
+        style={{ background: 'linear-gradient(180deg, var(--ink) 0%, color-mix(in srgb, var(--ink) 85%, var(--brand)) 100%)' }}>
         <div className="px-2 flex items-center justify-between mb-6">
           <Brand />
           <button onClick={alternarMenu} title="Ocultar o menu" aria-label="Ocultar o menu"
@@ -148,7 +148,7 @@ export function Shell({ area, groups, tabs, children }: ShellProps) {
         <Brand />
       </header>
 
-      <main className="flex-1 min-w-0 pt-14 md:pt-0 pb-24 md:pb-0">
+      <main className="flex-1 min-w-0 pt-14 md:pt-0 pb-24 md:pb-0 aurora">
         {children}
       </main>
 

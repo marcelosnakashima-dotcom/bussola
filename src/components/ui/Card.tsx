@@ -1,10 +1,18 @@
 import type { ReactNode } from 'react'
 
-// Superfície padrão das telas novas: borda suave, cantos arredondados, sombra leve.
-export function Card({ children, className = '', padded = true }: { children: ReactNode; className?: string; padded?: boolean }) {
+type Variant = 'glass' | 'solid' | 'hero'
+
+// Superfície das telas novas. Padrão: vidro translúcido sobre o fundo aurora.
+export function Card({ children, className = '', padded = true, variant = 'glass' }: {
+  children: ReactNode
+  className?: string
+  padded?: boolean
+  variant?: Variant
+}) {
+  const base = variant === 'hero' ? 'hero' : variant === 'glass' ? 'glass' : 'border border-line bg-surface'
   return (
-    <section className={`rounded-2xl border border-line bg-surface ${padded ? 'p-5' : ''} ${className}`}
-      style={{ boxShadow: 'var(--shadow-sm)' }}>
+    <section className={`rounded-3xl ${base} ${padded ? 'p-5 md:p-6' : ''} ${className}`}
+      style={variant === 'solid' ? { boxShadow: 'var(--shadow-sm)' } : undefined}>
       {children}
     </section>
   )

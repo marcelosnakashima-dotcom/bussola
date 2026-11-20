@@ -3,6 +3,8 @@ import type { ReactNode } from 'react'
 import { brl } from '@/lib/format'
 
 export const SERIES = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c6)', 'var(--c7)', 'var(--c8)']
+// Categorias e fontes: paleta que NÃO repete as cores dos grupos 50/30/20 (verde, terracota, azul)
+export const CAT_SERIES = ['var(--c6)', 'var(--c5)', 'var(--c4)', 'var(--c7)', 'var(--c8)', '#64748B', '#0D9488', '#9333EA']
 export const CLASS_COLOR = { necessidade: 'var(--nec)', desejo: 'var(--des)', poupanca: 'var(--pou)' } as const
 export const CLASS_LABEL = { necessidade: 'Necessidades', desejo: 'Desejos', poupanca: 'Poupança' } as const
 

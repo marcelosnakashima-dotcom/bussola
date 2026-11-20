@@ -26,3 +26,12 @@ export function mesCurto(iso: string): string {
   const nome = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('pt-BR', { month: 'short', timeZone: 'UTC' })
   return nome.replace('.', '')
 }
+
+// Rótulo curto para eixos de gráfico (sem "R$", que já está no contexto): 500, 4,5 mil, 1,2 mi
+export function axisCompact(v: number): string {
+  const abs = Math.abs(v)
+  const sinal = v < 0 ? '-' : ''
+  if (abs >= 1_000_000) return `${sinal}${(abs / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mi`
+  if (abs >= 1_000) return `${sinal}${(abs / 1_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil`
+  return `${sinal}${abs.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`
+}

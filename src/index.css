@@ -97,6 +97,9 @@ html, body, #root { height: 100%; margin: 0; padding: 0;
 .num          { font-variant-numeric: tabular-nums; }
 
 :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+/* gráficos: sem a borda de foco no clique do mouse; com foco visível pelo teclado */
+.recharts-surface:focus, .recharts-wrapper:focus { outline: none; }
+.recharts-surface:focus-visible { outline: 2px solid var(--brand); outline-offset: 4px; border-radius: 8px; }
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(8px); }
@@ -109,4 +112,76 @@ html, body, #root { height: 100%; margin: 0; padding: 0;
 .animate-fade-up { animation: fade-up 0.35s ease-out both; }
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up { animation: none; }
+}
+
+/* ─── Identidade v2: fundo "aurora" e vidro ───────────────────────────── */
+:root {
+  --aurora-1: rgba(42, 96, 73, 0.22);   /* verde Arsen */
+  --aurora-2: rgba(194, 65, 12, 0.12);  /* terracota */
+  --aurora-3: rgba(37, 99, 235, 0.10);  /* azul */
+  --glass-bg: rgba(255, 255, 255, 0.58);
+  --glass-border: rgba(255, 255, 255, 0.75);
+  --glass-shadow: 0 10px 30px -12px rgba(23, 34, 27, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --hero-from: #17221B;
+  --hero-to:   #2A6049;
+}
+:root[data-theme="dark"] {
+  --aurora-1: rgba(79, 163, 125, 0.20);
+  --aurora-2: rgba(240, 138, 75, 0.10);
+  --aurora-3: rgba(110, 160, 255, 0.10);
+  --glass-bg: rgba(22, 30, 26, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --hero-from: #0F1512;
+  --hero-to:   #2A6049;
+}
+
+.aurora {
+  background:
+    radial-gradient(900px 520px at 8% -8%, var(--aurora-1), transparent 60%),
+    radial-gradient(700px 480px at 100% 0%, var(--aurora-2), transparent 60%),
+    radial-gradient(800px 600px at 60% 110%, var(--aurora-3), transparent 60%),
+    var(--canvas);
+  background-attachment: fixed;
+}
+
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass { background: var(--surface); }
+}
+
+/* cartão de destaque: gradiente da marca com brilho de vidro */
+.hero {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  background: linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%);
+  box-shadow: 0 20px 40px -18px rgba(23, 34, 27, 0.55);
+}
+.hero::before {
+  content: "";
+  position: absolute; inset: -40% -10% auto auto;
+  width: 60%; aspect-ratio: 1;
+  background: radial-gradient(circle, rgba(255,255,255,0.18), transparent 65%);
+  pointer-events: none;
+}
+.hero::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(255,255,255,0.12);
+  pointer-events: none;
+}
+
+/* realce de elementos interativos de gráfico */
+.lift { transition: transform .18s ease, box-shadow .18s ease; }
+.lift:hover { transform: translateY(-2px); }
+@media (prefers-reduced-motion: reduce) {
+  .lift, .lift:hover { transition: none; transform: none; }
 }
