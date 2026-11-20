@@ -1,3 +1,4 @@
+import { useSearch } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 import {
   ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -15,13 +16,16 @@ import {
 } from '@/components/plano/PlanoSecoes'
 import { SecaoPendencias } from '@/components/plano/PendenciasPlano'
 
-const COR = { necessidade: '#2A6049', divida: '#17221B', desejo: '#D97706', futuro: '#2563EB', receita: '#8B5CF6' }
-const sinal = (n: number) => (n >= 0 ? 'var(--brand)' : '#B91C1C')
+const COR = { necessidade: 'var(--brand)', divida: 'var(--ink)', desejo: 'var(--warning)', futuro: 'var(--pou)', receita: '#8B5CF6' }
+const sinal = (n: number) => (n >= 0 ? 'var(--brand)' : 'var(--danger)')
 const VAZIO: ConteudoPlano = { diagnostico: null, metodo: null, caixa: null, corte: null, dividas: null }
 
 export function PlanoPage() {
   const { isAdmin } = useUserRole()
-  const [alvo, setAlvo] = useState<string | null>(null)
+  // admin pode chegar com ?household=<id> (botão "Abrir o plano" no resumo do cliente)
+  const pedido = (useSearch({ strict: false }) as { household?: unknown }).household
+  const [alvo, setAlvo] = useState<string | null>(
+    typeof pedido === 'string' && /^[0-9a-f-]{36}$/i.test(pedido) ? pedido : null)
   const households = usePlanoHouseholds(isAdmin)
   const { dados, semPlano, loading, error, fecharMes, responder } = usePlano(isAdmin ? alvo : null)
 
@@ -31,7 +35,7 @@ export function PlanoPage() {
       <label className="text-xs" style={{ color: 'var(--muted)' }}>
         Ver como (admin)
         <select value={alvo ?? ''} onChange={e => setAlvo(e.target.value || null)}
-          className="block mt-1 rounded-xl border bg-white px-3 py-2 text-sm" style={{ borderColor: 'var(--border)', color: 'var(--ink)' }}>
+          className="block mt-1 rounded-2xl glass px-3 py-2 text-sm" style={{ borderColor: 'var(--border)', color: 'var(--ink)' }}>
           <option value="">Meu household</option>
           {households.map(h => <option key={h.id} value={h.id}>{h.rotulo}</option>)}
         </select>
@@ -41,11 +45,11 @@ export function PlanoPage() {
 
   if (loading) return <>{seletor}<div className="p-8 text-sm" style={{ color: 'var(--muted)' }}>Carregando o plano…</div></>
 
-  if (error) return <>{seletor}<div className="p-8 text-sm text-red-700">Não foi possível carregar o plano: {error}</div></>
+  if (error) return <>{seletor}<div className="p-8 text-sm text-danger">Não foi possível carregar o plano: {error}</div></>
   if (semPlano || !dados) {
     return (
       <>{seletor}<div className="p-4 md:p-8 max-w-screen-md mx-auto">
-        <h1 className="font-display text-2xl md:text-3xl" style={{ color: 'var(--ink)' }}>Meu plano financeiro</h1>
+        <h1 className="font-display text-[28px] md:text-[34px] leading-tight" style={{ color: 'var(--ink)' }}>Meu plano financeiro</h1>
         <p className="text-sm mt-2" style={{ color: 'var(--muted)' }}>
           O plano financeiro ainda não foi publicado para este grupo familiar. Quando a Arsen concluir a
           construção do plano, ele aparece aqui e se atualiza a cada extrato importado.
@@ -147,7 +151,7 @@ export function PlanoView({
   return (
     <div className="p-4 md:p-8 max-w-screen-lg mx-auto space-y-8">
       <div>
-        <h1 className="font-display text-2xl md:text-3xl" style={{ color: 'var(--ink)' }}>Meu plano financeiro</h1>
+        <h1 className="font-display text-[28px] md:text-[34px] leading-tight" style={{ color: 'var(--ink)' }}>Meu plano financeiro</h1>
         <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>
           O plano combinado com a Arsen, os próximos 12 meses e o que falta decidir.
         </p>
@@ -155,7 +159,7 @@ export function PlanoView({
 
       <nav aria-label="Seções do plano" className="sticky top-0 z-10 -mx-4 md:-mx-8 px-4 md:px-8 py-2 overflow-x-auto flex gap-2 backdrop-blur" style={{ background: 'rgba(245,240,232,.92)' }}>
         {nav.map(n => (
-          <button key={n.id} onClick={() => ir(n.id)} className="whitespace-nowrap rounded-full border bg-white px-3 py-1.5 text-xs font-medium" style={{ borderColor: 'var(--border)', color: 'var(--ink)' }}>
+          <button key={n.id} onClick={() => ir(n.id)} className="whitespace-nowrap rounded-full border bg-surface px-3 py-1.5 text-xs font-medium" style={{ borderColor: 'var(--border)', color: 'var(--ink)' }}>
             {n.label}
           </button>
         ))}
@@ -177,7 +181,7 @@ export function PlanoView({
         )}
 
         {faltamExtratos && cobertura && (
-          <div className="rounded-2xl border p-4 flex gap-3 text-sm" style={{ borderColor: '#F59E0B', background: '#FFFBEB', color: '#92400E' }}>
+          <div className="rounded-2xl border p-4 flex gap-3 text-sm" style={{ borderColor: 'var(--warning)', background: 'var(--warning-soft)', color: 'var(--warning)' }}>
             <AlertTriangle size={18} className="shrink-0 mt-0.5" />
             <p>
               Faltam extratos de {rotuloMes(coberturaMes ?? mesCorrente, false)}: {cobertura.contasComLote} de {cobertura.contasAtivas} contas
@@ -267,7 +271,7 @@ export function PlanoView({
                         <p className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>
                           {tipica ? 'Plano com a renda típica' : 'Plano com o holerite mais recente'}
                         </p>
-                        {tipica && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ background: '#CFEBDA', color: 'var(--ink)' }}>Usada no mês a mês</span>}
+                        {tipica && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ background: 'var(--brand-soft)', color: 'var(--ink)' }}>Usada no mês a mês</span>}
                       </div>
                       <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
                         {tipica
@@ -347,7 +351,7 @@ export function PlanoView({
               </button>
             )}
           </div>
-          {acaoErro && <p className="text-sm text-red-700">{acaoErro}</p>}
+          {acaoErro && <p className="text-sm text-danger">{acaoErro}</p>}
         </section>
       )}
     </div>

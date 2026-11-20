@@ -403,7 +403,7 @@ export function DiagnosticoPage() {
                   className="py-2.5 rounded-xl border text-sm font-medium transition-colors"
                   style={{
                     borderColor: selected ? 'var(--brand)' : 'var(--border)',
-                    background: selected ? 'var(--brand)' : 'white',
+                    background: selected ? 'var(--brand)' : 'var(--surface)',
                     color: selected ? 'white' : 'var(--ink)',
                   }}>
                   {v ? 'Sim' : 'Não'}
@@ -426,7 +426,7 @@ export function DiagnosticoPage() {
               return (
                 <button key={opt.value} type="button" onClick={() => updateAnswer(field.key, opt.value)}
                   className="w-full flex items-center gap-3 text-left px-4 py-3 rounded-xl border transition-colors"
-                  style={{ borderColor: selected ? 'var(--brand)' : 'var(--border)', background: selected ? '#F0F7F3' : 'white' }}>
+                  style={{ borderColor: selected ? 'var(--brand)' : 'var(--border)', background: selected ? 'var(--brand-soft)' : 'var(--surface)' }}>
                   <span className="w-6 h-6 rounded-md border flex items-center justify-center text-xs flex-shrink-0"
                     style={{
                       borderColor: selected ? 'var(--brand)' : 'var(--border)',
@@ -459,7 +459,7 @@ export function DiagnosticoPage() {
               return (
                 <button key={opt.value} type="button" onClick={() => toggleCheckbox(field.key, opt.value)}
                   className="w-full flex items-center gap-3 text-left px-4 py-3 rounded-xl border transition-colors"
-                  style={{ borderColor: selected ? 'var(--brand)' : 'var(--border)', background: selected ? '#F0F7F3' : 'white' }}>
+                  style={{ borderColor: selected ? 'var(--brand)' : 'var(--border)', background: selected ? 'var(--brand-soft)' : 'var(--surface)' }}>
                   <span className="w-5 h-5 rounded-md border flex items-center justify-center text-xs flex-shrink-0"
                     style={{ borderColor: selected ? 'var(--brand)' : 'var(--border)', background: selected ? 'var(--brand)' : 'transparent', color: 'white' }}>
                     {selected ? '✓' : ''}
@@ -509,7 +509,7 @@ export function DiagnosticoPage() {
       return (
         <div key={field.key}>
           <label className="flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-colors"
-            style={{ borderColor: checked ? 'var(--brand)' : 'var(--border)', background: checked ? '#F0F7F3' : 'white' }}>
+            style={{ borderColor: checked ? 'var(--brand)' : 'var(--border)', background: checked ? 'var(--brand-soft)' : 'var(--surface)' }}>
             <input type="checkbox" checked={checked}
               onChange={e => updateAnswer(field.key, e.target.checked)}
               className="mt-0.5 w-4 h-4 flex-shrink-0" />
@@ -525,7 +525,7 @@ export function DiagnosticoPage() {
   return (
     <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="font-display text-2xl md:text-3xl" style={{ color: 'var(--ink)' }}>Diagnóstico financeiro</h1>
+        <h1 className="font-display text-[28px] md:text-[34px] leading-tight" style={{ color: 'var(--ink)' }}>Diagnóstico financeiro</h1>
         <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>
           Um raio-x completo da sua vida financeira, em poucos minutos.
         </p>
@@ -536,7 +536,7 @@ export function DiagnosticoPage() {
         <div className="h-full rounded-full transition-all duration-300" style={{ width: `${progressPct}%`, background: 'var(--brand)' }} />
       </div>
 
-      <div className="rounded-2xl border bg-white p-6 md:p-8 space-y-6" style={{ borderColor: 'var(--border)' }}>
+      <div className="rounded-3xl glass p-6 md:p-8 space-y-6" style={{ borderColor: 'var(--border)' }}>
         {current.type === 'welcome' && (
           <>
             <h2 className="font-display text-xl md:text-2xl" style={{ color: 'var(--ink)' }}>
@@ -601,7 +601,7 @@ export function DiagnosticoPage() {
 
         {current.type === 'summary' && (
           <>
-            <div className="rounded-2xl border-2 p-5 flex items-start gap-3" style={{ borderColor: 'var(--brand)', background: '#F0F7F3' }}>
+            <div className="rounded-2xl border-2 p-5 flex items-start gap-3" style={{ borderColor: 'var(--brand)', background: 'var(--brand-soft)' }}>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium" style={{ color: 'var(--ink)' }}>
                   {salvando ? 'Salvando seu diagnóstico…' : salvo ? 'Diagnóstico salvo com sucesso.' : 'Prontinho.'}
@@ -619,7 +619,7 @@ export function DiagnosticoPage() {
               </div>
             </div>
 
-            {erro && <p className="text-sm text-red-600 text-center">{erro}</p>}
+            {erro && <p className="text-sm text-danger text-center">{erro}</p>}
 
             <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
               {SECTIONS.map(section => {

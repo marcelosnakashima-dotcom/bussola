@@ -39,15 +39,15 @@ export function ForcePasswordChangePage() {
             <label className="block text-sm mb-1.5 font-medium" style={{ color: 'var(--ink)' }}>Nova senha</label>
             <input type="password" value={senha} onChange={e => setSenha(e.target.value)} required minLength={8}
               className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none"
-              style={{ borderColor: 'var(--border)', background: '#fff' }} />
+              style={{ borderColor: 'var(--border)', background: 'var(--surface)' }} />
           </div>
           <div>
             <label className="block text-sm mb-1.5 font-medium" style={{ color: 'var(--ink)' }}>Confirmar senha</label>
             <input type="password" value={confirma} onChange={e => setConfirma(e.target.value)} required minLength={8}
               className="w-full px-3 py-2.5 rounded-xl border text-sm outline-none"
-              style={{ borderColor: 'var(--border)', background: '#fff' }} />
+              style={{ borderColor: 'var(--border)', background: 'var(--surface)' }} />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-danger">{error}</p>}
           <button type="submit" disabled={loading}
             className="w-full py-2.5 rounded-xl text-sm font-medium text-white transition-opacity disabled:opacity-60"
             style={{ background: 'var(--brand)' }}>

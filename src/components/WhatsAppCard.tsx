@@ -55,11 +55,11 @@ export function WhatsAppCard() {
     await carregar()
   }
 
-  const card = 'rounded-2xl border bg-white p-5 space-y-3'
+  const card = 'rounded-3xl glass p-5 space-y-3'
   const btn = 'px-4 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60'
 
   return (
-    <div className={card} style={{ borderColor: 'var(--border)' }}>
+    <div className={card}>
       <div className="flex items-center gap-2">
         <MessageCircle className="w-4 h-4" style={{ color: 'var(--brand)' }} />
         <h3 className="font-medium" style={{ color: 'var(--ink)' }}>Gastos pelo WhatsApp</h3>
@@ -79,7 +79,7 @@ export function WhatsAppCard() {
           {confirmarRevogar ? (
             <p className="text-sm">
               Desvincular este número?{' '}
-              <button onClick={revogar} disabled={busy} className="underline font-medium text-red-600 disabled:opacity-50">Sim, desvincular</button>{' '}
+              <button onClick={revogar} disabled={busy} className="underline font-medium text-danger disabled:opacity-50">Sim, desvincular</button>{' '}
               <button onClick={() => setConfirmarRevogar(false)} className="underline" style={{ color: 'var(--muted)' }}>Não</button>
             </p>
           ) : (
@@ -127,7 +127,7 @@ export function WhatsAppCard() {
         </form>
       )}
 
-      {erro && <p className="text-sm text-red-600">{erro}</p>}
+      {erro && <p className="text-sm text-danger">{erro}</p>}
     </div>
   )
 }

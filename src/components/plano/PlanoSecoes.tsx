@@ -2,7 +2,7 @@ import { type ReactNode } from 'react'
 import { rotuloMes } from '@/lib/planoForecast'
 import type { Caixa, Corte, Diagnostico, Dividas, Metodo, Parte } from '@/lib/planoConteudo'
 
-const PALETA = ['#17221B', '#2A6049', '#6FA58A', '#B7CFC2', '#D97706']
+const PALETA = ['var(--chrome)', 'var(--brand)', '#6FA58A', '#B7CFC2', 'var(--warning)']
 export const brl0 = (n: number) => (n < 0 ? '−' : '') + 'R$ ' + Math.round(Math.abs(n)).toLocaleString('pt-BR')
 const soma = (p: Parte[]) => p.reduce((s, x) => s + x.valor, 0)
 
@@ -19,7 +19,7 @@ export function Secao({ id, kicker, titulo, subtitulo, children }: { id: string;
   )
 }
 
-export const cartao = 'rounded-2xl border bg-white p-4 md:p-5'
+export const cartao = 'rounded-3xl glass p-4 md:p-5'
 export const bordaCartao = { borderColor: 'var(--border)' }
 
 function Nota({ children }: { children: ReactNode }) {
@@ -75,7 +75,7 @@ export function SecaoDiagnostico({ d }: { d: Diagnostico }) {
 // ─── 2. Método ───────────────────────────────────────────────────────────
 
 export function SecaoMetodo({ m }: { m: Metodo }) {
-  const cores = ['#2A6049', '#D97706', '#2563EB']
+  const cores = ['var(--brand)', 'var(--warning)', 'var(--pou)']
   return (
     <Secao id="metodo" kicker="MÉTODO" titulo="50/30/20, adaptado ao casal" subtitulo={m.subtitulo}>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -93,7 +93,7 @@ export function SecaoMetodo({ m }: { m: Metodo }) {
           <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {m.ordem.map((o, i) => (
               <li key={o.titulo} className="flex gap-3">
-                <span className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: '#CFEBDA', color: 'var(--ink)' }}>{i + 1}</span>
+                <span className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: 'var(--brand-soft)', color: 'var(--ink)' }}>{i + 1}</span>
                 <div>
                   <p className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>{o.titulo}</p>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{o.descricao}</p>
@@ -153,8 +153,8 @@ export function SecaoCaixa({ c }: { c: Caixa }) {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {c.resultados.map((r, i) => (
-          <div key={r.rotulo} className="rounded-2xl p-4" style={i === 1 ? { background: 'var(--ink)', color: '#fff' } : { background: i === 2 ? '#CFEBDA' : '#EFEAE0', color: 'var(--ink)' }}>
-            <p className="font-display text-2xl" style={i === 1 ? { color: r.valor < 0 ? '#FCA5A5' : '#73F0A1' } : undefined}>{brl0(r.valor)}</p>
+          <div key={r.rotulo} className="rounded-2xl p-4" style={i === 1 ? { background: 'var(--chrome)', color: '#fff' } : { background: i === 2 ? 'var(--brand-soft)' : 'var(--surface-2)', color: 'var(--ink)' }}>
+            <p className="font-display text-2xl" style={i === 1 ? { color: r.valor < 0 ? 'var(--danger)' : '#73F0A1' } : undefined}>{brl0(r.valor)}</p>
             <p className="text-xs mt-1" style={{ color: i === 1 ? 'rgba(255,255,255,.75)' : 'var(--muted)' }}>{r.rotulo}</p>
           </div>
         ))}
@@ -182,13 +182,13 @@ export function SecaoCorte({ c }: { c: Corte }) {
             </p>
             <p>
               {l.economia > 0
-                ? <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ background: '#CFEBDA', color: 'var(--ink)' }}>−{brl0(l.economia)}</span>
+                ? <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ background: 'var(--brand-soft)', color: 'var(--ink)' }}>−{brl0(l.economia)}</span>
                 : <span style={{ color: 'var(--muted)' }}>—</span>}
             </p>
             <p className="text-xs" style={{ color: 'var(--muted)' }}>{l.como}</p>
           </div>
         ))}
-        <div className="grid gap-x-4 gap-y-1 p-4 md:grid-cols-[1.3fr_1fr_1fr_0.8fr_2fr] md:items-center" style={{ borderTop: '1px solid var(--border)', background: '#EFEAE0' }}>
+        <div className="grid gap-x-4 gap-y-1 p-4 md:grid-cols-[1.3fr_1fr_1fr_0.8fr_2fr] md:items-center" style={{ borderTop: '1px solid var(--border)', background: 'var(--surface-2)' }}>
           <p className="font-semibold text-sm" style={{ color: 'var(--ink)' }}>Total de desejos por mês</p>
           <p className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>
             <span className="md:hidden text-xs font-normal" style={{ color: 'var(--muted)' }}>Hoje: </span>{brl0(c.totalHoje)}
@@ -198,7 +198,7 @@ export function SecaoCorte({ c }: { c: Corte }) {
           </p>
           <p>
             {c.totalHoje > c.totalTeto
-              ? <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ background: '#CFEBDA', color: 'var(--ink)' }}>−{brl0(c.totalHoje - c.totalTeto)}</span>
+              ? <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ background: 'var(--brand-soft)', color: 'var(--ink)' }}>−{brl0(c.totalHoje - c.totalTeto)}</span>
               : <span style={{ color: 'var(--muted)' }}>—</span>}
           </p>
           <p className="text-xs" style={{ color: 'var(--ink)' }}>
@@ -208,7 +208,7 @@ export function SecaoCorte({ c }: { c: Corte }) {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {c.fases.map(f => (
-          <div key={f.periodo} className="rounded-2xl p-4" style={{ background: '#EFEAE0' }}>
+          <div key={f.periodo} className="rounded-2xl p-4" style={{ background: 'var(--surface-2)' }}>
             <p className="text-[11px] font-semibold tracking-[0.1em]" style={{ color: 'var(--brand-lt)' }}>{f.periodo.toUpperCase()}</p>
             <p className="font-display text-xl mt-0.5" style={{ color: 'var(--ink)' }}>{brl0(f.teto)}</p>
           </div>
@@ -227,7 +227,7 @@ function mesesEntre(a: string, b: string) {
 
 export function SecaoDividas({ d, inicio }: { d: Dividas; inicio: string }) {
   const donos = [...new Set(d.itens.map(i => i.dono))]
-  const cor = (dono: string) => (donos.indexOf(dono) === 0 ? '#2A6049' : '#6FA58A')
+  const cor = (dono: string) => (donos.indexOf(dono) === 0 ? 'var(--brand)' : '#6FA58A')
   const total = Math.max(1, ...d.itens.map(i => mesesEntre(inicio, i.fim) + 1))
   const anos: number[] = []
   const a0 = Number(inicio.slice(0, 4)), a1 = Number(d.itens.reduce((m, i) => (i.fim > m ? i.fim : m), inicio).slice(0, 4))
@@ -254,7 +254,7 @@ export function SecaoDividas({ d, inicio }: { d: Dividas; inicio: string }) {
                     <span className="font-semibold" style={{ color: 'var(--ink)' }}>{i.rotulo}</span>
                     <span className="text-xs" style={{ color: 'var(--muted)' }}>até {rotuloMes(i.fim)}{i.estimado ? ' *' : ''}</span>
                   </div>
-                  <div className="h-3 rounded-full mt-1" style={{ background: '#EFEAE0' }}>
+                  <div className="h-3 rounded-full mt-1" style={{ background: 'var(--surface-2)' }}>
                     <i className="block h-full rounded-full" style={{ width: `${w}%`, background: cor(i.dono) }} />
                   </div>
                   <p className="text-[11px] mt-0.5" style={{ color: 'var(--muted)' }}>{i.detalhe}</p>
@@ -283,7 +283,7 @@ export function SecaoAcompanhamento() {
       <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {passos.map((p, i) => (
           <li key={p.t} className={cartao} style={bordaCartao}>
-            <span className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: '#CFEBDA', color: 'var(--ink)' }}>{i + 1}</span>
+            <span className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: 'var(--brand-soft)', color: 'var(--ink)' }}>{i + 1}</span>
             <p className="font-semibold text-sm mt-2" style={{ color: 'var(--ink)' }}>{p.t}</p>
             <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>{p.d}</p>
           </li>

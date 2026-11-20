@@ -47,7 +47,7 @@ export function ManualTransactionCard() {
   const label = 'text-xs mb-1 block'
 
   return (
-    <div className="rounded-2xl border bg-white" style={{ borderColor: 'var(--border)' }}>
+    <div className="rounded-3xl glass" style={{ borderColor: 'var(--border)' }}>
       <button type="button" onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-5 py-3 text-left">
         <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>Lançamento manual</span>
